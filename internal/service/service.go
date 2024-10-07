@@ -62,6 +62,7 @@ func (s WorkerService) Add(ctx context.Context, order *core.Order) (*core.Order,
 		span.End()
 	}()
 
+	order.Status = "PENDING"
 	res, err := s.workerRepo.Add(ctx, tx, order)
 	if err != nil {
 		return nil, err

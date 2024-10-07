@@ -15,7 +15,6 @@ type Order struct {
 	CreateAt		time.Time 	`json:"create_at,omitempty"`
 	UpdateAt		*time.Time 	`json:"update_at,omitempty"`
 	TenantID		string  	`json:"tenant_id,omitempty"`
-	UserLastUpdate	*string  	`json:"user_last_update,omitempty"`
 }
 
 type Event struct {

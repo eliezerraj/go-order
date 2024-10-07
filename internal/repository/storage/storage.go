@@ -112,6 +112,7 @@ func (w WorkerRepository) Get(ctx context.Context, order *core.Order) (*core.Ord
 
 func (w WorkerRepository) Add(ctx context.Context, tx pgx.Tx, order *core.Order) (*core.Order, error){
 	childLogger.Debug().Msg("Add")
+	childLogger.Debug().Interface("Add : ", order).Msg("")
 
 	span := lib.Span(ctx, "storage.Add")	
 	defer span.End()
@@ -132,8 +133,6 @@ func (w WorkerRepository) Add(ctx context.Context, tx pgx.Tx, order *core.Order)
 										tenant_id) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
 	order.CreateAt = time.Now()
-	order.TenantID = "NA"
-
 	row := tx.QueryRow(ctx, query, order.OrderID, 
 									order.PersonID,
 									order.Status,
