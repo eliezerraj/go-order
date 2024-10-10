@@ -1,7 +1,7 @@
 # AWS_DEFAULT_REGION us-east-2
 # AWS_ACCOUNT_ID 908671954593
 # IMAGE_TAG latest
-# IMAGE_REPO_NAME go-fraud
+# IMAGE_REPO_NAME go-order
 
 version: 0.2
 
