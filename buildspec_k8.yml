@@ -46,4 +46,4 @@ phases:
       - kubectl apply -f .kubernetes/aws/svc.yaml
 
       - echo Start rollout...   
-      - kubectl rollout restart deployment/go-credit -n test-a
+      - kubectl rollout restart deployment/go-order -n test-a

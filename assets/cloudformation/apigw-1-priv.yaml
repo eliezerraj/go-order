@@ -1,0 +1,384 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: ApiGw Private
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 1.0
+  Env:
+    Description: Execution environment
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hml
+      - prd
+  CustomAccessLogFormatParameter:
+    Description: Custom Access Log for API ApiGateway
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: CustomAccessLogFormat
+  InternalDomainName:
+    Type: String
+    Default: go-payment.architecturedev.caradhras.io
+  VPCEndpointId:
+    Type: String
+    Default: vpce-0cc0b1181b93539f0
+  VpcLinkId:
+    Type: String
+    Default: mfyvth
+  ApplicationName:
+    Type: String
+    Default: go-order-pv
+  OwnerName:
+    Type: String
+    Default: architecture
+  ComponentName:
+    Type: String
+    Default: go-order-pv
+  PciClassificationName:
+    Type: String
+    Default: pci-connected
+    AllowedValues:
+      - pci
+      - pci-connected
+      - non-pci
+
+Conditions:
+  isPrd: !Equals [!Ref Env, prd]
+  isPrdOrQa:
+    'Fn::Or':
+      - 'Fn::Equals':
+          - !Ref Env
+          - prd
+      - 'Fn::Equals':
+          - !Ref Env
+          - qa
+
+Mappings:
+  Network:
+    dev:
+      Vpc: vpc-0df31a6e2d113d8b7
+    hml:
+      Vpc: vpc-053bf362926211174
+    prd:
+      Vpc: vpc-0fa3325d4843786ca,vpc-028b0a127e9669159
+  Tag:
+    Service:
+      value: go-order-pv
+    Squad:
+      value: architecture
+    Slack:
+      value: architecture
+    Email:
+      value: architecture
+
+Resources:
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /dock/apigateway/go-order-pv
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: service
+          Value: !FindInMap [Tag, Service, value]
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: squad
+          Value: !FindInMap [Tag, Squad, value]
+        - Key: slack
+          Value: !FindInMap [Tag, Slack, value]
+        - Key: email
+          Value: !FindInMap [Tag, Email, value]
+        - Key: resource
+          Value: log-group
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: owner
+          Value: !Ref OwnerName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+
+  APIGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: pv
+      EndpointConfiguration: 
+        Type: PRIVATE
+        VPCEndpointIds:
+          - !Ref VPCEndpointId
+      Variables:
+        apiName: go-order-pv
+      Tags:
+        env: !Ref Env
+        service: !FindInMap [ Tag, Service, value ]
+        stack: !Sub ${AWS::StackName}
+        squad: !FindInMap [ Tag, Squad, value ]
+        slack: !FindInMap [ Tag, Slack, value ]
+        email: !FindInMap [ Tag, Email, value ]
+        resource: api-gateway private
+        application: !Ref ApplicationName
+        owner: !Ref OwnerName
+        component: !Ref ComponentName
+        pci_classification: !Ref PciClassificationName
+      AccessLogSetting:
+        DestinationArn: !GetAtt [ AccessLogGroup, Arn ]
+        Format: !Ref CustomAccessLogFormatParameter
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          MetricsEnabled: true
+          DataTraceEnabled: true
+          LoggingLevel: INFO
+      TracingEnabled: true
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          version: "2018-09-06T21:53:50Z"
+          title: go-order-pv
+        tags:
+          - name: go-order-pv"
+            description: "go-order-pv"
+        schemes:
+          - "https"
+        paths:
+          /{proxy+}:
+            get:
+              consumes:
+                - application/json
+              produces:
+                - "application/json"
+              responses:
+                "200":
+                  description: OK
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                type: http_proxy
+                httpMethod: GET
+                uri: 
+                  Fn::Sub: https://${InternalDomainName}/{proxy}
+                responses:
+                  default:
+                    statusCode: '200'
+                requestParameters:
+                  integration.request.header.X-Forwarded-For: "context.identity.sourceIp"
+                  integration.request.path.proxy: method.request.path.proxy
+                  #integration.request.header.trace-id: "method.request.header.trace-id"
+                passthroughBehavior: "when_no_match"
+                connectionType: "VPC_LINK"
+                connectionId: !Ref VpcLinkId
+            post:
+              produces:
+                - "application/json"
+              parameters:
+                - name: trace-id
+                  in: header
+                  required: false
+                - name: client-id
+                  in: header
+                  required: true
+              responses:
+                "200":
+                  description: OK
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "201":
+                  description: Created
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "202":
+                  description: Updated
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "400":
+                  description: Bad Request
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "401":
+                  description: Unauthorized
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "403":
+                  description: Forbidden
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "404":
+                  description: Not Found
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "405":
+                  description: Method Not Allowed
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "409":
+                  description: Not Found
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "415":
+                  description: Unsupported Media Type
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "422":
+                  description: Internal Server Error
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "500":
+                  description: Internal Server Error
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "503":
+                  description: Service Unavailable
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+                "504":
+                  description: Gateway Timeout
+                  schema:
+                    "$ref": "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                type: http_proxy
+                httpMethod: POST
+                uri: 
+                  Fn::Sub: https://${InternalDomainName}/{proxy}
+                responses:
+                  "200":
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "201":
+                    statusCode: "201"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "202":
+                    statusCode: "202"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "204":
+                    statusCode: "204"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "400":
+                    statusCode: "400"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "401":
+                    statusCode: "401"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "403":
+                    statusCode: "403"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "404":
+                    statusCode: "404"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "405":
+                    statusCode: "405"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "409":
+                    statusCode: "409"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "415":
+                    statusCode: "415"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "422":
+                    statusCode: "422"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "500":
+                    statusCode: "500"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "503":
+                    statusCode: "503"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                  "504":
+                    statusCode: "504"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                requestParameters:
+                  integration.request.header.X-Forwarded-For: "context.identity.sourceIp"
+                  integration.request.path.proxy: method.request.path.proxy
+                  integration.request.header.trace-id: "method.request.header.trace-id"
+                passthroughBehavior: "when_no_match"
+                connectionType: "VPC_LINK"
+                connectionId: !Ref VpcLinkId
+        definitions:
+          Empty:
+            type: "object"
+            title: "Empty Schema"
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Deny"
+              Principal: "*"
+              Action: "execute-api:Invoke"
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*/*/*
+              Condition:
+                StringNotEquals:
+                  aws:sourceVpc: !If [ isPrdOrQa, !Split [",", !FindInMap [ Network, !Ref Env, Vpc] ], !FindInMap [ Network, !Ref Env, Vpc]]
+            - Effect: "Allow"
+              Principal: "*"
+              Action: "execute-api:Invoke"
+              Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*/*/*
+              Condition:
+                StringEquals:
+                  aws:sourceVpc: !If [ isPrdOrQa, !Split [",", !FindInMap [ Network, !Ref Env, Vpc] ], !FindInMap [ Network, !Ref Env, Vpc]]
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref APIGateway
