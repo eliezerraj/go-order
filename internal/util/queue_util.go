@@ -17,8 +17,8 @@ func GetQueueEnv() core.QueueConfig {
 
 	var queueConfig	core.QueueConfig
 
-	if os.Getenv("QUEUE_URL_CREDIT") !=  "" {
-		queueConfig.QueueUrl = os.Getenv("QUEUE_URL_CREDIT")
+	if os.Getenv("QUEUE_URL_ORDER") !=  "" {
+		queueConfig.QueueUrl = os.Getenv("QUEUE_URL_ORDER")
 	}
 	if os.Getenv("AWS_REGION") !=  "" {
 		queueConfig.AwsRegion = os.Getenv("AWS_REGION")

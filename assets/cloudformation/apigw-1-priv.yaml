@@ -20,7 +20,7 @@ Parameters:
     Default: CustomAccessLogFormat
   InternalDomainName:
     Type: String
-    Default: go-payment.architecturedev.caradhras.io
+    Default: go-payment.architecture.caradhras.io
   VPCEndpointId:
     Type: String
     Default: vpce-0cc0b1181b93539f0
