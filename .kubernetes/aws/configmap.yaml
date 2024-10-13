@@ -20,3 +20,4 @@ data:
   QUEUE_URL_ORDER: "https://sqs.us-east-2.amazonaws.com/908671954593/order.fifo"
   AWS_REGION: "us-east-2"
   POD_QUEUE_TYPE: "sqs"
+  ORDER_TABLE_NAME: "order-table"

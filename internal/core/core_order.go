@@ -6,6 +6,8 @@ import (
 
 type Order struct {
 	ID				int			`json:"id,omitempty"`
+	PK				string		`dynamodbav:"pk"`
+	SK				string		`dynamodbav:"sk"`
 	OrderID			string  	`json:"order_id,omitempty"`
 	PersonID		string  	`json:"person_id,omitempty"`
 	ProductID		[]string  	`json:"products_id,omitempty"`

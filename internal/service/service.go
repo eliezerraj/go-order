@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"time"
+
 	"github.com/rs/zerolog/log"
 
-	"github.com/go-order/internal/lib"
-	//"github.com/go-order/internal/erro"
 	"github.com/go-order/internal/adapter/event"
 	"github.com/go-order/internal/core"
+	"github.com/go-order/internal/lib"
+	"github.com/go-order/internal/repository/dynamo"
 	"github.com/go-order/internal/repository/storage"
 )
 
@@ -17,15 +18,18 @@ var childLogger = log.With().Str("service", "service").Logger()
 type WorkerService struct {
 	workerRepo		*storage.WorkerRepository
 	producerWorker	event.EventNotifier
+	workerDynamo	*dynamo.DynamoRepository
 }
 
 func NewWorkerService( 	workerRepo 		*storage.WorkerRepository,
-						eventNotifier	event.EventNotifier) *WorkerService{
+						eventNotifier	event.EventNotifier,
+						workerDynamo	*dynamo.DynamoRepository) *WorkerService{
 	childLogger.Debug().Msg("NewWorkerService")
 
 	return &WorkerService{
-		workerRepo:		 	workerRepo,
-		producerWorker: 	eventNotifier,
+		workerRepo:		workerRepo,
+		producerWorker: eventNotifier,
+		workerDynamo: 	workerDynamo,
 	}
 }
 
@@ -77,6 +81,11 @@ func (s WorkerService) Add(ctx context.Context, order *core.Order) (*core.Order,
 	}
 	
 	err = s.producerWorker.Producer(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err = s.workerDynamo.Add(ctx, *order)
 	if err != nil {
 		return nil, err
 	}

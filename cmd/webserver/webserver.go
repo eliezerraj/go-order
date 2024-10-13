@@ -11,6 +11,7 @@ import(
 	"github.com/go-order/internal/handler"
 	"github.com/go-order/internal/repository/pg"
 	"github.com/go-order/internal/repository/storage"
+	"github.com/go-order/internal/repository/dynamo"
 	"github.com/go-order/internal/service"
 	"github.com/go-order/internal/handler/controller"
 	"github.com/go-order/internal/adapter/event/sqs"
@@ -31,12 +32,14 @@ func init(){
 	database := util.GetDatabaseEnv()
 	configOTEL := util.GetOtelEnv()
 	queueConfig := util.GetQueueEnv()
+	dynamo := util.GetDynamoEnv()
 
 	appServer.InfoPod = &infoPod
 	appServer.Database = &database
 	appServer.Server = &server
 	appServer.ConfigOTEL = &configOTEL
 	appServer.QueueConfig = &queueConfig
+	appServer.DynamoConfig = &dynamo
 }
 
 func Server(){
@@ -70,6 +73,12 @@ func Server(){
 		break
 	}
 
+	// Create a repository
+	dynamoRepository, err := dynamo.NewDynamoRepository(ctx, *appServer.DynamoConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("erro connect to dynamo")
+	}
+
 	// Setup queue type
 	producerWorker, err = sqs.NewNotifierSQS(ctx, appServer.QueueConfig)
 	if err != nil {
@@ -77,7 +86,7 @@ func Server(){
 	}
 
 	repoDatabase := storage.NewWorkerRepository(databasePG)
-	workerService := service.NewWorkerService(&repoDatabase,producerWorker)
+	workerService := service.NewWorkerService(&repoDatabase, producerWorker, dynamoRepository)
 	httpWorkerAdapter 	:= controller.NewHttpWorkerAdapter(workerService)
 	httpServer 			:= handler.NewHttpAppServer(appServer.Server)
 	httpServer.StartHttpAppServer(ctx, &httpWorkerAdapter, &appServer)

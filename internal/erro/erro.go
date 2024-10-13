@@ -11,4 +11,5 @@ var (
 	ErrDelete 			= errors.New("delete data error")
 	ErrUnmarshal 		= errors.New("unmarshal json error")
 	ErrUnauthorized 	= errors.New("not authorized")
+	ErrPreparedQuery 	= errors.New("prepare dynamo query erro")
 )

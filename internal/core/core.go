@@ -11,12 +11,18 @@ type DatabaseRDS struct {
 	Postgres_Driver		string `json:"postgres_driver"`
 }
 
+type DatabaseDynamo struct {
+	OrderTableName		string `json:"order_table"`
+	AwsRegion			string	`json:"aws_region"`
+}
+
 type AppServer struct {
 	InfoPod 		*InfoPod 		`json:"info_pod"`
 	Server     		*Server     	`json:"server"`
 	Database		*DatabaseRDS	`json:"database"`
 	ConfigOTEL		*ConfigOTEL		`json:"otel_config"`
 	QueueConfig		*QueueConfig	`json:"queue_config"`
+	DynamoConfig	*DatabaseDynamo	`json:"dynamo_config"`
 }
 
 type InfoPod struct {
