@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/go-order/internal/adapter/bucket"
 	"github.com/go-order/internal/adapter/event"
 	"github.com/go-order/internal/core"
 	"github.com/go-order/internal/lib"
@@ -19,17 +20,20 @@ type WorkerService struct {
 	workerRepo		*storage.WorkerRepository
 	producerWorker	event.EventNotifier
 	workerDynamo	*dynamo.DynamoRepository
+	bucketWorker	*bucket.BucketWorker
 }
 
 func NewWorkerService( 	workerRepo 		*storage.WorkerRepository,
 						eventNotifier	event.EventNotifier,
-						workerDynamo	*dynamo.DynamoRepository) *WorkerService{
+						workerDynamo	*dynamo.DynamoRepository,
+						bucketWorker	*bucket.BucketWorker) *WorkerService{
 	childLogger.Debug().Msg("NewWorkerService")
 
 	return &WorkerService{
 		workerRepo:		workerRepo,
 		producerWorker: eventNotifier,
 		workerDynamo: 	workerDynamo,
+		bucketWorker: bucketWorker,
 	}
 }
 
@@ -80,12 +84,17 @@ func (s WorkerService) Add(ctx context.Context, order *core.Order) (*core.Order,
 		EventData:	&eventData,	
 	}
 	
-	err = s.producerWorker.Producer(ctx, event)
+	res, err = s.workerDynamo.Add(ctx, *order)
+	if err != nil {
+		return nil, err
+	}
+	
+	err = s.bucketWorker.PutObject(ctx, order.OrderID, *order)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err = s.workerDynamo.Add(ctx, *order)
+	err = s.producerWorker.Producer(ctx, event)
 	if err != nil {
 		return nil, err
 	}

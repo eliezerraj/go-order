@@ -29,8 +29,3 @@ type Event struct {
 type EventData struct {
     Order   *Order    `json:"order"`
 }
-
-type QueueConfig struct {
-	QueueUrl	string	`json:"queue_url"`
-	AwsRegion	string	`json:"aws_region"`
-}

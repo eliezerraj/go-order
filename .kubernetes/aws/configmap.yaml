@@ -21,3 +21,5 @@ data:
   AWS_REGION: "us-east-2"
   POD_QUEUE_TYPE: "sqs"
   ORDER_TABLE_NAME: "order-table"
+  BUCKET_NAME: eliezer-992382474575-us-east-2-go-order/
+  FILE_PATH: order/

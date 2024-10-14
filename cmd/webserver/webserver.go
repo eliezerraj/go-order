@@ -1,27 +1,30 @@
 package webserver
 
-import(
-	"time"
+import (
 	"context"
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/go-order/internal/util"
-	"github.com/go-order/internal/core"	
+	"github.com/go-order/internal/adapter/bucket"
+	"github.com/go-order/internal/adapter/event"
+	"github.com/go-order/internal/adapter/event/sqs"
+	"github.com/go-order/internal/core"
 	"github.com/go-order/internal/handler"
+	"github.com/go-order/internal/handler/controller"
+	"github.com/go-order/internal/repository/dynamo"
 	"github.com/go-order/internal/repository/pg"
 	"github.com/go-order/internal/repository/storage"
-	"github.com/go-order/internal/repository/dynamo"
 	"github.com/go-order/internal/service"
-	"github.com/go-order/internal/handler/controller"
-	"github.com/go-order/internal/adapter/event/sqs"
-	"github.com/go-order/internal/adapter/event"
+	"github.com/go-order/internal/util"
 )
 
 var(
 	logLevel 	= 	zerolog.DebugLevel
 	appServer	core.AppServer
 	producerWorker	event.EventNotifier
+	bucketWorker	*bucket.BucketWorker
 )
 
 func init(){
@@ -33,6 +36,7 @@ func init(){
 	configOTEL := util.GetOtelEnv()
 	queueConfig := util.GetQueueEnv()
 	dynamo := util.GetDynamoEnv()
+	bucket := util.GetBucketEnv()
 
 	appServer.InfoPod = &infoPod
 	appServer.Database = &database
@@ -40,6 +44,7 @@ func init(){
 	appServer.ConfigOTEL = &configOTEL
 	appServer.QueueConfig = &queueConfig
 	appServer.DynamoConfig = &dynamo
+	appServer.BucketConfig = &bucket
 }
 
 func Server(){
@@ -73,20 +78,25 @@ func Server(){
 		break
 	}
 
-	// Create a repository
+	// Create a dynamo repository
 	dynamoRepository, err := dynamo.NewDynamoRepository(ctx, *appServer.DynamoConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("erro connect to dynamo")
 	}
 
-	// Setup queue type
+	// Setup sqs queue type
 	producerWorker, err = sqs.NewNotifierSQS(ctx, appServer.QueueConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("erro connect to queue")
 	}
-
+	// Setup s3
+	bucketWorker, err = bucket.NewBucketWorker(ctx, *appServer.BucketConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("erro connect to s3")
+	}
+	_ = bucketWorker
 	repoDatabase := storage.NewWorkerRepository(databasePG)
-	workerService := service.NewWorkerService(&repoDatabase, producerWorker, dynamoRepository)
+	workerService := service.NewWorkerService(&repoDatabase, producerWorker, dynamoRepository, bucketWorker)
 	httpWorkerAdapter 	:= controller.NewHttpWorkerAdapter(workerService)
 	httpServer 			:= handler.NewHttpAppServer(appServer.Server)
 	httpServer.StartHttpAppServer(ctx, &httpWorkerAdapter, &appServer)

@@ -23,6 +23,7 @@ type AppServer struct {
 	ConfigOTEL		*ConfigOTEL		`json:"otel_config"`
 	QueueConfig		*QueueConfig	`json:"queue_config"`
 	DynamoConfig	*DatabaseDynamo	`json:"dynamo_config"`
+	BucketConfig	*BucketConfig	`json:"bucket_config"`
 }
 
 type InfoPod struct {
@@ -53,4 +54,15 @@ type ConfigOTEL struct {
 	ThreadsActiveUpperBound int64    `mapstructure:"RandomThreadsActiveUpperBound"`
 	CpuUsageUpperBound      int64    `mapstructure:"RandomCpuUsageUpperBound"`
 	SampleAppPorts          []string `mapstructure:"SampleAppPorts"`
+}
+
+type QueueConfig struct {
+	QueueUrl	string	`json:"queue_url"`
+	AwsRegion	string	`json:"aws_region"`
+}
+
+type BucketConfig struct {
+	BucketNameKey	string
+	FilePath		string
+	AwsRegion		string
 }
