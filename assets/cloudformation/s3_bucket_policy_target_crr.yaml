@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template create s3 ccr target bucket/policy
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 0
+  Env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hml
+      - prd
+  S3SourceBucketName:
+    Description: Bucket Name
+    Type: String
+    Default: eliezer-992382474575-us-east-1-go-order
+  RoleARNTrustStoreCRR:
+    Description: Arn Role truststore
+    Type: String
+    Default: arn:aws:iam::908671954593:role/s3crr_role_for_go_order
+
+Resources:
+  S3TrustStoreBucket:
+    Type: 'AWS::S3::Bucket'
+    #DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref S3SourceBucketName
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+            BucketKeyEnabled: true
+      Tags:
+      - Key: env
+        Value: !Ref Env
+      - Key: stack
+        Value: !Sub ${AWS::StackName}
+      - Key: name
+        Value: !Ref S3SourceBucketName
+      - Key: resource
+        Value: bucket-s3
+
+  S3TrustStoreBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3SourceBucketName
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Sid: Set permissions for objects
+            Action:
+              - s3:ReplicateObject
+              - s3:ReplicateDelete
+              - s3:GetObject
+            Resource:
+              - !Sub arn:aws:s3:::${S3SourceBucketName}/*
+            Principal:
+              AWS: !Ref RoleARNTrustStoreCRR
+          - Effect: Allow
+            Sid: Set permissions on bucket
+            Action:
+              - s3:PutBucketVersioning
+              - s3:GetBucketVersioning
+              - s3:List*
+            Resource:
+              - !Sub arn:aws:s3:::${S3SourceBucketName}
+            Principal:
+              AWS: !Ref RoleARNTrustStoreCRR
+
+Outputs:
+  S3TrustStoreBucketName:
+    Value: !Ref S3TrustStoreBucket
+    Description: The name of the bucket
+  S3TrustStoreBucketArn: 
+    Value: !GetAtt S3TrustStoreBucket.Arn
+    Description: The buckey ARN

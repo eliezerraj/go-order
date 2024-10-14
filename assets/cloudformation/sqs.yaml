@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack SQS Fico template
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 1.0
+  Env:
+    Description: Execution environment
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hml
+      - prd
+  Squad:
+    Type: String
+    Default: architecture
+  SQSName:
+    Type: String
+    Default: order.fifo
+  SQSDLQName:
+    Type: String
+    Default: dlq-order.fifo
+
+Resources:
+  SQSFifoQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      QueueName: !Ref SQSName
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      DeduplicationScope: messageGroup
+      FifoThroughputLimit: perMessageGroupId
+      MessageRetentionPeriod: 345600  
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SQSDeadLetterQueue.Arn
+        maxReceiveCount: 5
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: squad
+          Value: !Ref Squad
+        - Key: resource
+          Value: sqs
+
+  SQSDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref SQSDLQName
+      FifoQueue: true
+      MessageRetentionPeriod: 345600
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: squad
+          Value: !Ref Squad
+        - Key: resource
+          Value: dlq-sqs
+
+  SQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SQSFifoQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+            Resource: !GetAtt SQSFifoQueue.Arn

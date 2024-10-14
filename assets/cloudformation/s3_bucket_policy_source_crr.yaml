@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template create s3 ccr source bucket/policy
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 0
+  Env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hml
+      - prd
+  S3SourceBucketName:
+    Description: Bucket Source Name
+    Type: String
+    Default: eliezer-992382474575-us-east-2-go-order
+  S3TargetBucketName:
+    Description: Bucket Target Name
+    Type: String
+    Default: eliezer-992382474575-us-east-1-go-order
+
+Resources:
+  S3TrustStoreBucket:
+    Type: 'AWS::S3::Bucket'
+    #DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref S3SourceBucketName
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+            BucketKeyEnabled: true
+      ReplicationConfiguration:
+        Role: !GetAtt S3TrustStoreBucketRole.Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub arn:aws:s3:::${S3TargetBucketName}
+              StorageClass: STANDARD
+            Id: ReplicationRule1
+            Prefix: ''
+            Status: Enabled
+      Tags:
+      - Key: env
+        Value: !Ref Env
+      - Key: stack
+        Value: !Sub ${AWS::StackName}
+      - Key: name
+        Value: !Ref S3SourceBucketName
+      - Key: resource
+        Value: bucket-s3
+
+  S3TrustStoreBucketRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: s3crr_role_for_go_order
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+
+  S3TrustStoreBucketPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: S3TrustStoreBucketPolicy
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObjectVersionForReplication
+              - s3:GetObjectVersionAcl
+              - s3:GetObjectVersionTagging
+              - s3:ListBucket
+              - s3:GetReplicationConfiguration
+              - s3:GetObjectRetention
+              - s3:GetObjectLegalHold
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:s3:::${S3SourceBucketName}
+              - !Sub arn:aws:s3:::${S3SourceBucketName}/*
+          - Action:
+              - s3:ReplicateObject
+              - s3:ReplicateDelete
+              - s3:ReplicateTags
+              - s3:ObjectOwnerOverrideToBucketOwner
+            Effect: Allow
+            Resource: 
+              - !Sub arn:aws:s3:::${S3TargetBucketName}/*
+      Roles:
+        - !Ref S3TrustStoreBucketRole
+
+Outputs:
+  S3SourceBucketName:
+    Value: !Ref S3TrustStoreBucket
+    Description: The name of the bucket
+  S3SourceBucketNameArn: 
+    Value: !GetAtt S3TrustStoreBucket.Arn
+    Description: The buckey ARN
