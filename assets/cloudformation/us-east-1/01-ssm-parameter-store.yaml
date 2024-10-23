@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an SSM Parameter Store
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 1.0
+  Env:
+    Description: stack environment
+    Type: String
+    Default: dev
+
+Resources:
+  ApiLogSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: CustomAccessLogFormat
+      Description: "Formato de logs de acesso para APIs públicas que usam o Docknito como autorizador"
+      Type: String
+      Value:  |
+        {"accountId":"$context.accountId","apiId":"$context.apiId","domainName":"$context.domainName","domainPrefix":"$context.domainPrefix","error.message":"$context.error.message","error.responseType":"$context.error.responseType","extendedRequestId":"$context.extendedRequestId","httpMethod":"$context.httpMethod","X-Amzn-Trace-Id":"$context.xrayTraceId","identity.sourceIp":"$context.identity.sourceIp","identity.clientCert.clientCertPem":"$context.identity.clientCert.clientCertPem","identity.clientCert.subjectDN":"$context.identity.clientCert.subjectDN","identity.clientCert.issuerDN":"$context.identity.clientCert.issuerDN","identity.clientCert.serialNumber":"$context.identity.clientCert.serialNumber","identity.clientCert.validity.notBefore":"$context.identity.clientCert.validity.notBefore","identity.clientCert.validity.notAfter":"$context.identity.clientCert.validity.notAfter","identity.userAgent":"$context.identity.userAgent","path":"$context.path","protocol":"$context.protocol","requestId":"$context.requestId","requestTime":"$context.requestTime","requestTimeEpoch":"$context.requestTimeEpoch","resourceId":"$context.resourceId","resourcePath":"$context.resourcePath","stage":"$context.stage","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength","status":"$context.status","message":"$context.authorizer.customErrorMessage","authorization_latency":"$context.authorize.latency","authorizer_latency":"$context.authorizer.latency","authentication_latency":"$context.authenticate.latency","integration_latency":"$context.integration.latency","response_latency":"$context.responseLatency","waf-error":"$context.waf.error","waf-status":"$context.waf.status","waf-latency":"$context.waf.latency"}
+      Tier: Standard
+
+Outputs:
+  ParameterValue:
+    Description: "The value of the SSM parameter"
+    Value: !GetAtt ApiLogSSMParameter.Value

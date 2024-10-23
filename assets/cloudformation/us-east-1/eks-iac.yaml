@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template to create Cluster EKS nested stack 
+
+Parameters:
+  Versao:
+    Type: String
+  Env:
+    Type: String  
+  TemplateURL:
+    Type: String
+    Default: https://eliezerraj-908671954593-devops.s3.us-east-2.amazonaws.com/cf-templates/eks-iac-cluster-karpenter.yaml
+
+Mappings:
+  eksCluster:
+    dev:
+      version: 1.29
+      clusterName: 'arch-eks-03'
+      templateVersionFargate: 24.0.0
+    hml:
+      version: 1.29
+      clusterName: 'arch-eks-03-hml'
+      templateVersionFargate: 24.0.0
+    # prd:
+    #   version: 1.29
+    #   clusterName: 'arch-eks-03-prd'
+    #   templateVersionFargate: 23.0.0
+
+  network:
+    dev:
+      VpcId: vpc-0f888a156cb86cdff
+      VpcCidr: 10.195.128.0/17
+      SubnetAZA: subnet-0f1faa2b0dd16104a
+      SubnetAZB: subnet-0b5613ac436d2748a
+      SubnetAZC: subnet-04e14ea6e7c6ec1b1
+
+      #VpcId: vpc-0df31a6e2d113d8b7
+      #VpcCidr: 10.214.0.0/16
+      #SubnetAZA: subnet-0ca2d45be9d6ab5bc
+      #SubnetAZB: subnet-0b2b57acbb1da0623
+      #SubnetAZC: subnet-05d3e7f4611c12a23
+    hml:
+      VpcId: vpc-053bf362926211174
+      VpcCidr: 10.213.0.0/16
+      SubnetAZA: subnet-0fb3b86a8657a696f
+      SubnetAZB: subnet-0fb6727ed0041b799
+      SubnetAZC: subnet-0c45c1b6d9ba2cfc5
+    # prd:
+    #   VpcId: vpc-0fa3325d4843786ca
+    #   VpcCidr: 10.194.0.0/17
+    #   SubnetAZA: subnet-03ed2227d2b07dfa9
+    #   SubnetAZB: subnet-0b78395bdd4830972
+    #   SubnetAZC: subnet-009e5b0e1e95913de
+ 
+  tag:
+      CloudProvider:
+        value: aws
+      Application:
+        value: arch-eks
+      BusinessUnitName:
+        value: global
+      Component:
+        value: architecture-api
+      Owner:
+        value: architecture
+      PCIClassification:
+        value: non-pci
+      PCIScope:
+        value: false
+      Platform:
+        value: dockone
+      Squad:
+        value: architecture
+      Email:
+        value: architecturet@dock.tech
+      Slack:
+        value: architecture
+      Service:
+        value: architecture-api
+    
+Conditions: 
+  isPrd: !Equals [!Ref Env, prd]
+
+Resources:
+
+  eksClusterFargate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        CloudProvider: !FindInMap [ tag, CloudProvider, value ]
+        Owner: !FindInMap [ tag, Owner, value ]
+        Env: !Ref Env
+        BusinessUnitName: !FindInMap [ tag, BusinessUnitName, value ]
+        Component: !FindInMap [ tag, Component, value ]
+        Application: !FindInMap [ tag, Application, value ]
+        PCIClassification: !If [isPrd, pci-connected, non-pci]
+        PCIScope: !If [isPrd, true, false]
+        Platform: !FindInMap [ tag, Platform, value ] 
+        Squad: !FindInMap [ tag, Squad, value ]
+        Slack: !FindInMap [ tag, Slack, value ]
+        Email: !FindInMap [ tag, Email, value ]
+        Service: !FindInMap [ tag, Service, value ]
+        Stack: !Sub ${AWS::StackName}
+        ClusterName: !FindInMap [ eksCluster, !Ref Env, clusterName ]
+        ClusterVersion: !FindInMap [ eksCluster, !Ref Env, version ]
+        VpcId: !FindInMap [ network, !Ref Env, VpcId ]
+        CidrIp: !FindInMap [ network, !Ref Env, VpcCidr ]
+        SubnetIds:
+          !Join
+            - ','
+            - - !FindInMap [ network, !Ref Env, SubnetAZA ]
+              - !FindInMap [ network, !Ref Env, SubnetAZB ]
+              - !FindInMap [ network, !Ref Env, SubnetAZC ]
+      TemplateURL: !Ref TemplateURL

@@ -69,7 +69,8 @@ func Server(){
 				log.Error().Err(err).Msg("error open Database... trying again !!")
 			} else {
 				log.Error().Err(err).Msg("fatal error open Database aborting")
-				panic(err)
+				//panic(err)
+				break
 			}
 			time.Sleep(3 * time.Second)
 			count = count + 1

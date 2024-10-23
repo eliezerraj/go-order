@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template para criacao de VpcLink para uma API REST acessar recursos da VPC
+
+Parameters:
+  Name:
+    Description: Name this Vpc Link.
+    Type: String
+  LoadBalancerArn:
+    Description: Load balancer ARN.  
+    Type: String
+  Env:
+    Description: Environment.  
+    Type: String
+  Service:
+    Description: Product or Application name.  
+    Type: String
+  Squad:
+    Description: Squad name 
+    Type: String
+  Slack:
+    Description: Slack channel name
+    Type: String
+  Email:
+    Description: Email name
+    Type: String
+    
+Resources:
+  VpcLink:
+    Type: AWS::ApiGateway::VpcLink
+    Properties:
+      Description: !Join
+        - ' '
+        - - Vpc Link to use for integration this 
+          - !Ref Name
+          - with API REST      
+      Name: !Ref Name
+      TargetArns: 
+        - !Ref LoadBalancerArn
+      Tags:
+        -
+          Key: env
+          Value: !Ref Env
+        -
+          Key: service
+          Value: !Ref Service
+        -
+          Key: stack
+          Value: !Sub ${AWS::StackName}
+        -
+          Key: squad
+          Value: !Ref Squad
+        -
+          Key: slack
+          Value: !Ref Slack
+        -
+          Key: email
+          Value: !Ref Email
+        -
+          Key: resource
+          Value: vpc-link
+          
+Outputs:
+  VpcLinkId:
+    Description: Id the VpcLink
+    Value: !Ref VpcLink
+    Export:
+      Name: !Sub VpcLinkId${Name}

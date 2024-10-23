@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creation of VpcLink
+
+Parameters:
+  Env:
+    Type: String
+    Default: dev
+  VpcLinkName:
+    Type: String
+    Default: nlb-arch-eks-03
+  LoadBalancerArn:
+    Type: String
+    Default: arn:aws:elasticloadbalancing:us-east-1:908671954593:loadbalancer/net/arch-eks-03-nginx-ingress/b780b2528d43bb45
+  TemplateURL:
+    Type: String
+    Default: https://eliezerraj-908671954593-devops.s3.us-east-2.amazonaws.com/cf-templates/vpc-link-template.yaml
+    
+
+Mappings:
+  Tag:
+    Service:
+      value: vpc-link  
+    Squad:
+      value: architecture
+    Slack:
+      value: architecture
+    Email:
+      value: architecture
+  VpcLink:
+    Version:
+      value: 1.0.0
+
+Conditions:
+  isPrd: !Equals [!Ref Env, prd]
+
+  isDevOrHml: !Or
+    - !Equals [!Ref Env, dev]
+    - !Equals [!Ref Env, hml]
+
+Resources:
+  VpcLink:
+    Condition: isDevOrHml
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        Name: !Ref VpcLinkName
+        LoadBalancerArn: !Ref LoadBalancerArn
+        Env: !Ref Env
+        Service: !FindInMap [ Tag, Service, value ]
+        Slack: !FindInMap [ Tag, Slack, value ]
+        Squad: !FindInMap [ Tag, Squad, value ] 
+        Email: !FindInMap [ Tag, Email, value ]
+      TemplateURL: !Ref TemplateURL

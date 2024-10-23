@@ -1,0 +1,2053 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template para criacao do cluster EKS
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - 
+        Label:
+          default: "EKS Product Details"
+        Parameters:
+          - ClusterName
+          - ClusterVersion
+      - 
+        Label:
+          default: "Network/VPC info"
+        Parameters:
+          - CidrIp
+          - SubnetIds
+          - VpcId
+          - CidrIpOp1
+          - CidrIpOp2
+          - CidrIpOp3
+          - DescriptionCidrIpOp1
+          - DescriptionCidrIpOp2
+          - DescriptionCidrIpOp3
+      - 
+        Label:
+          default: "EKS Product Tags"
+        Parameters:
+          - Application
+          - BusinessUnitName
+          - CloudProvider
+          - Component
+          - Env
+          - Owner
+          - PCIClassification
+          - PCIScope
+          - Platform
+          - Squad
+          - Email
+          - Slack
+          - Service
+          - Stack
+
+    ParameterLabels:
+      Application:
+        default: 'Application: '
+      BusinessUnitName:
+        default: 'BusinessUnitName: '
+      CloudProvider:
+        default: 'CloudProvider: '
+      Component:
+        default: 'Component: '
+      Env:
+        default: 'Env: '
+      Owner:
+        default: 'Owner: '
+      PCIClassification:
+        default: 'PCIClassification: '
+      PCIScope:
+        default: 'PCIScope: '
+      Platform:
+        default: 'Platform: '
+      Squad:
+        default: 'Squad: '
+      Email:
+        default: 'Email: '
+      Slack:
+        default: 'Slack: '
+      Service:
+        default: 'Service: '
+      Stack:
+        default: 'Stack: '
+      ClusterName:
+        default: 'ClusterName: '
+      ClusterVersion:
+        default: 'ClusterVersion: '
+      CidrIp:
+        default: 'CidrIp: '
+      SubnetIds:
+        default: 'SubnetIds: '
+      VpcId:
+        default: 'VpcId: '
+      CidrIpOp1:
+        default: 'CidrIpOp1: '
+      CidrIpOp2:
+        default: 'CidrIpOp2: '
+      CidrIpOp3:
+        default: 'CidrIpOp3: '
+      DescriptionCidrIpOp1:
+        default: 'DescriptionCidrIpOp1: '
+      DescriptionCidrIpOp2:
+        default: 'DescriptionCidrIpOp2: '
+      DescriptionCidrIpOp3:
+        default: 'DescriptionCidrIpOp3: '
+
+Parameters:
+  Application:
+    Description:    Please specify the Application. Used for tagging 
+    Type:           String
+  BusinessUnitName:
+    Description:    Please specify the Business Unit Name. Used for tagging  
+    Type:           String
+  CloudProvider:
+    Description:    Please specify the Cloud Provider. Used for tagging
+    Type:           String
+    Default: aws
+    AllowedValues:
+      - aws
+      - azure
+      - gcp
+  Component:
+    Description:    Please specify the Component. Used for tagging
+    Type:           String
+  Env:
+    Description:    Please specify the Environment. Used for tagging   
+    Type:           String
+    AllowedValues:
+      - dev
+      - qa
+      - hml
+      - prd    
+  Owner:
+    Description:    Please specify the Owner. Used for tagging  
+    Type:           String   
+  PCIClassification:
+    Description:    Please specify the PCI Classification of environment. Used for tagging  
+    Type:           String
+    Default: non-pci
+    AllowedValues:
+      - pci
+      - pci-connected
+      - non-pci    
+  PCIScope:
+    Description:    Please specify if this environment is PCI Scope or not. Used for tagging  
+    Type:           String
+    Default: false
+    AllowedValues:
+      - false
+      - true
+  Platform:
+    Description:    Please specify the Platform. Used for tagging
+    Type:           String  
+  Squad:
+    Description:    Please specify the Squad. Used for tagging
+    Type:           String 
+  Email:
+    Description:    Please specify the Email. Used for tagging
+    Type:           String 
+  Slack:
+    Description:    Please specify the Slack. Used for tagging
+    Type:           String 
+  Service:
+    Description:    Please specify the Service. Used for tagging
+    Type:           String 
+  Stack:
+    Description:    Please specify the Stack. Used for tagging
+    Type:           String 
+  ClusterName:
+    Description:    Please specify EKS Cluster Name
+    Type:           String
+    Default:        ""
+  ClusterVersion:
+    Description:    Please specify EKS Cluster Version
+    Type:           String
+    Default:        '1.29'
+    AllowedValues:
+      - '1.25'
+      - '1.26'
+      - '1.27'
+      - '1.28'
+      - '1.29'
+  CidrIp:
+    Description:    Please specify CIDR Block of VPC  
+    Type:           String
+  SubnetIds:
+    Description:    Please specify List the Subnets  
+    Type:           'List<AWS::EC2::Subnet::Id>'
+  VpcId:
+    Description:    Please specify VPC ID of AWS Account  
+    Type:           String
+  CidrIpOp1:
+    Description:    Please specify optional CIDR Block  
+    Type:           String
+    Default:        ""
+  CidrIpOp2:
+    Description:    Please specify optional CIDR Block  
+    Type:           String
+    Default:        ""
+  CidrIpOp3:
+    Description:    Please specify optional CIDR Block
+    Type:           String
+    Default:        ""
+  DescriptionCidrIpOp1:
+    Description:    Please specify Opcional description for CIDR Block  
+    Type:           String
+    Default:        ""
+  DescriptionCidrIpOp2:
+    Description:    Please specify Opcional description for CIDR Block  
+    Type:           String
+    Default:        ""
+  DescriptionCidrIpOp3:
+    Description:    Please specify Opcional description for CIDR Block  
+    Type:           String
+    Default:        ""
+
+Mappings:
+  Cluster:
+    EndpointPrivateAccess: 
+      Access: true
+    EndpointPublicAccess: 
+      Access: false
+  RegionMap:
+    us-east-1:
+      PrefixList: pl-0d5d1e2da45f1791d
+    us-east-2:
+      PrefixList: pl-0a4fad0d8c87e0fb1
+    sa-east-1:
+      PrefixList: pl-0f69d41070629d77d
+
+Conditions:
+  notClusterName: !Equals [!Ref ClusterName, ""]
+  isPCI: !Equals [ !Ref PCIScope, true ]
+  notCidrIpOp1: !Not [!Equals [!Ref CidrIpOp1, ""]]
+  notCidrIpOp2: !Not [!Equals [!Ref CidrIpOp2, ""]]
+  notCidrIpOp3: !Not [!Equals [!Ref CidrIpOp3, ""]]
+  notDescriptionCidrIpOp1: !Not [!Equals [!Ref DescriptionCidrIpOp1, ""]]
+  notDescriptionCidrIpOp2: !Not [!Equals [!Ref DescriptionCidrIpOp2, ""]]
+  notDescriptionCidrIpOp3: !Not [!Equals [!Ref DescriptionCidrIpOp3, ""]]
+
+Resources:
+  ClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows EKS to manage clusters on your behalf
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+
+  ClusterAutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub eks-cluster-autoscaler-${Cluster}            
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:kube-system:cluster-autoscaler"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]        
+      Policies:
+        - PolicyName: !Sub eks-cluster-autoscaler-${Cluster}   
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'autoscaling:DescribeAutoScalingGroups'
+                  - 'autoscaling:DescribeAutoScalingInstances'
+                  - 'autoscaling:DescribeLaunchConfigurations'
+                  - 'autoscaling:DescribeTags'
+                  - 'autoscaling:SetDesiredCapacity'
+                  - 'autoscaling:TerminateInstanceInAutoScalingGroup'
+                  - 'ec2:DescribeLaunchTemplateVersions'
+                  - 'ec2:DescribeInstanceTypes'            
+                Resource: '*'
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterLoadBalancerControlerRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      RoleName: !Sub eks-loadbalancer-controller-${Cluster}
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:kube-system:loadbalancer-controller"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub eks-loadbalancer-controller-${Cluster}
+          PolicyDocument: 
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "iam:CreateServiceLinkedRole",
+                            "ec2:DescribeAccountAttributes",
+                            "ec2:DescribeAddresses",
+                            "ec2:DescribeAvailabilityZones",
+                            "ec2:DescribeInternetGateways",
+                            "ec2:DescribeVpcs",
+                            "ec2:DescribeSubnets",
+                            "ec2:DescribeSecurityGroups",
+                            "ec2:DescribeInstances",
+                            "ec2:DescribeNetworkInterfaces",
+                            "ec2:DescribeTags",
+                            "ec2:GetCoipPoolUsage",
+                            "ec2:DescribeCoipPools",
+                            "elasticloadbalancing:DescribeLoadBalancers",
+                            "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                            "elasticloadbalancing:DescribeListeners",
+                            "elasticloadbalancing:DescribeListenerCertificates",
+                            "elasticloadbalancing:DescribeSSLPolicies",
+                            "elasticloadbalancing:DescribeRules",
+                            "elasticloadbalancing:DescribeTargetGroups",
+                            "elasticloadbalancing:DescribeTargetGroupAttributes",
+                            "elasticloadbalancing:DescribeTargetHealth",
+                            "elasticloadbalancing:DescribeTags",
+                            "elasticloadbalancing:AddTags",
+                            "elasticloadbalancing:SetSecurityGroups"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "cognito-idp:DescribeUserPoolClient",
+                            "acm:ListCertificates",
+                            "acm:DescribeCertificate",
+                            "iam:ListServerCertificates",
+                            "iam:GetServerCertificate",
+                            "waf-regional:GetWebACL",
+                            "waf-regional:GetWebACLForResource",
+                            "waf-regional:AssociateWebACL",
+                            "waf-regional:DisassociateWebACL",
+                            "wafv2:GetWebACL",
+                            "wafv2:GetWebACLForResource",
+                            "wafv2:AssociateWebACL",
+                            "wafv2:DisassociateWebACL",
+                            "shield:GetSubscriptionState",
+                            "shield:DescribeProtection",
+                            "shield:CreateProtection",
+                            "shield:DeleteProtection"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:AuthorizeSecurityGroupIngress",
+                            "ec2:RevokeSecurityGroupIngress"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:CreateSecurityGroup"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:CreateTags"
+                        ],
+                        "Resource": "arn:aws:ec2:*:*:security-group/*",
+                        "Condition": {
+                            "StringEquals": {
+                                "ec2:CreateAction": "CreateSecurityGroup"
+                            },
+                            "Null": {
+                                "aws:RequestTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:CreateTags",
+                            "ec2:DeleteTags"
+                        ],
+                        "Resource": "arn:aws:ec2:*:*:security-group/*",
+                        "Condition": {
+                            "Null": {
+                                "aws:RequestTag/elbv2.k8s.aws/cluster": "true",
+                                "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ec2:AuthorizeSecurityGroupIngress",
+                            "ec2:RevokeSecurityGroupIngress",
+                            "ec2:DeleteSecurityGroup"
+                        ],
+                        "Resource": "*",
+                        "Condition": {
+                            "Null": {
+                                "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:CreateLoadBalancer",
+                            "elasticloadbalancing:CreateTargetGroup"
+                        ],
+                        "Resource": "*",
+                        "Condition": {
+                            "Null": {
+                                "aws:RequestTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:CreateListener",
+                            "elasticloadbalancing:DeleteListener",
+                            "elasticloadbalancing:CreateRule",
+                            "elasticloadbalancing:DeleteRule"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:AddTags",
+                            "elasticloadbalancing:RemoveTags"
+                        ],
+                        "Resource": [
+                            "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+                            "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+                            "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+                        ],
+                        "Condition": {
+                            "Null": {
+                                "aws:RequestTag/elbv2.k8s.aws/cluster": "true",
+                                "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:AddTags",
+                            "elasticloadbalancing:RemoveTags"
+                        ],
+                        "Resource": [
+                            "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+                            "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+                            "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+                            "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*"
+                        ]
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                            "elasticloadbalancing:SetIpAddressType",
+                            "elasticloadbalancing:SetSecurityGroups",
+                            "elasticloadbalancing:SetSubnets",
+                            "elasticloadbalancing:DeleteLoadBalancer",
+                            "elasticloadbalancing:ModifyTargetGroup",
+                            "elasticloadbalancing:ModifyTargetGroupAttributes",
+                            "elasticloadbalancing:DeleteTargetGroup"
+                        ],
+                        "Resource": "*",
+                        "Condition": {
+                            "Null": {
+                                "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:RegisterTargets",
+                            "elasticloadbalancing:DeregisterTargets"
+                        ],
+                        "Resource": "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "elasticloadbalancing:SetWebAcl",
+                            "elasticloadbalancing:ModifyListener",
+                            "elasticloadbalancing:AddListenerCertificates",
+                            "elasticloadbalancing:RemoveListenerCertificates",
+                            "elasticloadbalancing:ModifyRule"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterExternalDns:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub eks-external-dns-${Cluster}
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"                   
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:kube-system:external-dns"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub eks-external-dns-${Cluster}
+          PolicyDocument:
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "route53:ChangeResourceRecordSets"
+                        ],
+                        "Resource": [
+                            "arn:aws:route53:::hostedzone/*"
+                        ]
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "route53:ListHostedZones",
+                            "route53:ListResourceRecordSets"
+                        ],
+                        "Resource": [
+                            "*"
+                        ]
+                    }
+                ]
+            }
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterExternalSecret:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub eks-external-secret-${Cluster} 
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:kube-system:external-secret"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub eks-external-secret-${Cluster}     
+          PolicyDocument:
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "secretsmanager:GetResourcePolicy",
+                            "secretsmanager:GetSecretValue",
+                            "secretsmanager:DescribeSecret",
+                            "secretsmanager:ListSecretVersionIds",
+                            "kms:Decrypt",
+                            "kms:DescribeKey",
+                            "sts:AssumeRole"      
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+        - PolicyName: k8s-ssm-policy
+          PolicyDocument:
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "ssm:GetParameter",
+                        "Resource": "*"
+                    }
+                ]
+            }
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterFluentBitCloudWatch:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub eks-fluentbit-cloudwatch-${Cluster}
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:amazon-cloudwatch:fluent-bit"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub eks-fluentbit-cloudwatch-${Cluster}
+          PolicyDocument:
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "logs:PutLogEvents",
+                            "logs:CreateLogGroup",
+                            "logs:PutRetentionPolicy",
+                            "logs:CreateLogStream",
+                            "logs:DescribeLogGroups",
+                            "logs:DescribeLogStreams"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterKedaOperator:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "eks-keda-operator-${Cluster}" 
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"                   
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:kube-system:keda-operator"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub "eks-keda-operator-policy-${Cluster}"
+          PolicyDocument:
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sqs:*"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  ClusterKarpenterController:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "eks-karpenter-controller-${Cluster}" 
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"                   
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${eksEndpoint}:sub": "system:serviceaccount:karpenter:karpenter"
+                  }
+                }
+              }
+            ]
+          }
+        - eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+      Policies:
+        - PolicyName: !Sub "eks-karpenter-controller-policy-${Cluster}"
+          PolicyDocument: !Sub 
+            - |
+              {
+                  "Statement": [
+                      {
+                          "Action": [
+                              "ssm:GetParameter",
+                              "ec2:DescribeImages",
+                              "ec2:RunInstances",
+                              "ec2:DescribeSubnets",
+                              "ec2:DescribeSecurityGroups",
+                              "ec2:DescribeLaunchTemplates",
+                              "ec2:DescribeInstances",
+                              "ec2:DescribeInstanceTypes",
+                              "ec2:DescribeInstanceTypeOfferings",
+                              "ec2:DescribeAvailabilityZones",
+                              "ec2:DeleteLaunchTemplate",
+                              "ec2:CreateTags",
+                              "ec2:CreateLaunchTemplate",
+                              "ec2:CreateFleet",
+                              "ec2:DescribeSpotPriceHistory",
+                              "pricing:GetProducts"
+                          ],
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Sid": "Karpenter"
+                      },
+                      {
+                          "Action": "ec2:TerminateInstances",
+                          "Condition": {
+                              "StringLike": {
+                                  "ec2:ResourceTag/karpenter.sh/nodepool": "*"
+                              }
+                          },
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Sid": "ConditionalEC2Termination"
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": "iam:PassRole",
+                          "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/KarpenterNodeRole-${Cluster}",
+                          "Sid": "PassNodeIAMRole"
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": "eks:DescribeCluster",
+                          "Resource": "arn:${AWS::Partition}:eks:${AWS::Region}:${AWS::AccountId}:cluster/${Cluster}",
+                          "Sid": "EKSClusterEndpointLookup"
+                      },
+                      {
+                          "Sid": "AllowScopedInstanceProfileCreationActions",
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Action": [
+                          "iam:CreateInstanceProfile"
+                          ],
+                          "Condition": {
+                          "StringEquals": {
+                              "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned",
+                              "aws:RequestTag/topology.kubernetes.io/region": "${AWS::Region}"
+                          },
+                          "StringLike": {
+                              "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                          }
+                          }
+                      },
+                      {
+                          "Sid": "AllowScopedInstanceProfileTagActions",
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Action": [
+                          "iam:TagInstanceProfile"
+                          ],
+                          "Condition": {
+                          "StringEquals": {
+                              "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned",
+                              "aws:ResourceTag/topology.kubernetes.io/region": "${AWS::Region}",
+                              "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned",
+                              "aws:RequestTag/topology.kubernetes.io/region": "${AWS::Region}"
+                          },
+                          "StringLike": {
+                              "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*",
+                              "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                          }
+                          }
+                      },
+                      {
+                          "Sid": "AllowScopedInstanceProfileActions",
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Action": [
+                          "iam:AddRoleToInstanceProfile",
+                          "iam:RemoveRoleFromInstanceProfile",
+                          "iam:DeleteInstanceProfile"
+                          ],
+                          "Condition": {
+                          "StringEquals": {
+                              "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned",
+                              "aws:ResourceTag/topology.kubernetes.io/region": "${AWS::Region}"
+                          },
+                          "StringLike": {
+                              "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                          }
+                          }
+                      },
+                      {
+                          "Sid": "AllowInstanceProfileReadActions",
+                          "Effect": "Allow",
+                          "Resource": "*",
+                          "Action": "iam:GetInstanceProfile"
+                      }
+                  ],
+                  "Version": "2012-10-17"
+              }
+            - Cluster:
+                !Ref Cluster
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  KarpenterNodeRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "KarpenterNodeRole-${Cluster}"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                !Sub "ec2.${AWS::URLSuffix}"
+            Action:
+              - "sts:AssumeRole"
+          - Effect: Allow
+            Principal:
+              Service: "spotfleet.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"              
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+  
+  KarpenterControllerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "KarpenterControllerPolicy-${Cluster}"
+      # The PolicyDocument must be in JSON string format because we use a StringEquals condition that uses an interpolated
+      # value in one of its key parameters which isn't natively supported by CloudFormation
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AllowScopedEC2InstanceAccessActions",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:${AWS::Region}::image/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}::snapshot/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:security-group/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:subnet/*"
+              ],
+              "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet"
+              ]
+            },
+            {
+              "Sid": "AllowScopedEC2LaunchTemplateAccessActions",
+              "Effect": "Allow",
+              "Resource": "arn:${AWS::Partition}:ec2:${AWS::Region}:*:launch-template/*",
+              "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned"
+                },
+                "StringLike": {
+                  "aws:ResourceTag/karpenter.sh/nodepool": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedEC2InstanceActionsWithTags",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:fleet/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:instance/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:volume/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:network-interface/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:launch-template/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:spot-instances-request/*"
+              ],
+              "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet",
+                "ec2:CreateLaunchTemplate"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned"
+                },
+                "StringLike": {
+                  "aws:RequestTag/karpenter.sh/nodepool": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedResourceCreationTagging",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:fleet/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:instance/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:volume/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:network-interface/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:launch-template/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:spot-instances-request/*"
+              ],
+              "Action": "ec2:CreateTags",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned",
+                  "ec2:CreateAction": [
+                    "RunInstances",
+                    "CreateFleet",
+                    "CreateLaunchTemplate"
+                  ]
+                },
+                "StringLike": {
+                  "aws:RequestTag/karpenter.sh/nodepool": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedResourceTagging",
+              "Effect": "Allow",
+              "Resource": "arn:${AWS::Partition}:ec2:${AWS::Region}:*:instance/*",
+              "Action": "ec2:CreateTags",
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned"
+                },
+                "StringLike": {
+                  "aws:ResourceTag/karpenter.sh/nodepool": "*"
+                },
+                "ForAllValues:StringEquals": {
+                  "aws:TagKeys": [
+                    "karpenter.sh/nodeclaim",
+                    "Name"
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedDeletion",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:instance/*",
+                "arn:${AWS::Partition}:ec2:${AWS::Region}:*:launch-template/*"
+              ],
+              "Action": [
+                "ec2:TerminateInstances",
+                "ec2:DeleteLaunchTemplate"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned"
+                },
+                "StringLike": {
+                  "aws:ResourceTag/karpenter.sh/nodepool": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowRegionalReadActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeImages",
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceTypeOfferings",
+                "ec2:DescribeInstanceTypes",
+                "ec2:DescribeLaunchTemplates",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSpotPriceHistory",
+                "ec2:DescribeSubnets"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestedRegion": "${AWS::Region}"
+                }
+              }
+            },
+            {
+              "Sid": "AllowSSMReadActions",
+              "Effect": "Allow",
+              "Resource": "arn:${AWS::Partition}:ssm:${AWS::Region}::parameter/aws/service/*",
+              "Action": "ssm:GetParameter"
+            },
+            {
+              "Sid": "AllowPricingReadActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": "pricing:GetProducts"
+            },
+            {
+              "Sid": "AllowInterruptionQueueActions",
+              "Effect": "Allow",
+              "Resource": "${KarpenterInterruptionQueue.Arn}",
+              "Action": [
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl",
+                "sqs:ReceiveMessage"
+              ]
+            },
+            {
+              "Sid": "AllowPassingInstanceRole",
+              "Effect": "Allow",
+              "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/KarpenterNodeRole-${Cluster}",
+              "Action": "iam:PassRole",
+              "Condition": {
+                "StringEquals": {
+                  "iam:PassedToService": "ec2.amazonaws.com"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedInstanceProfileCreationActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": [
+                "iam:CreateInstanceProfile"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned",
+                  "aws:RequestTag/topology.kubernetes.io/region": "${AWS::Region}"
+                },
+                "StringLike": {
+                  "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedInstanceProfileTagActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": [
+                "iam:TagInstanceProfile"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned",
+                  "aws:ResourceTag/topology.kubernetes.io/region": "${AWS::Region}",
+                  "aws:RequestTag/kubernetes.io/cluster/${Cluster}": "owned",
+                  "aws:RequestTag/topology.kubernetes.io/region": "${AWS::Region}"
+                },
+                "StringLike": {
+                  "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*",
+                  "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowScopedInstanceProfileActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": [
+                "iam:AddRoleToInstanceProfile",
+                "iam:RemoveRoleFromInstanceProfile",
+                "iam:DeleteInstanceProfile"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:ResourceTag/kubernetes.io/cluster/${Cluster}": "owned",
+                  "aws:ResourceTag/topology.kubernetes.io/region": "${AWS::Region}"
+                },
+                "StringLike": {
+                  "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+              }
+            },
+            {
+              "Sid": "AllowInstanceProfileReadActions",
+              "Effect": "Allow",
+              "Resource": "*",
+              "Action": "iam:GetInstanceProfile"
+            },
+            {
+              "Sid": "AllowAPIServerEndpointDiscovery",
+              "Effect": "Allow",
+              "Resource": "arn:${AWS::Partition}:eks:${AWS::Region}:${AWS::AccountId}:cluster/${Cluster}",
+              "Action": "eks:DescribeCluster"
+            }
+          ]
+        }
+
+  KarpenterNodeInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${Cluster}"
+      Path: /
+      Roles:
+        - Ref: KarpenterNodeRole
+
+  KarpenterInterruptionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref Cluster
+      MessageRetentionPeriod: 300
+      SqsManagedSseEnabled: true
+  
+  KarpenterInterruptionQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref KarpenterInterruptionQueue
+      PolicyDocument:
+        Id: EC2InterruptionPolicy
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+                - sqs.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt KarpenterInterruptionQueue.Arn
+  
+  ScheduledChangeRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.health
+        detail-type:
+          - AWS Health Event
+      Targets:
+        - Id: KarpenterInterruptionQueueTarget
+          Arn: !GetAtt KarpenterInterruptionQueue.Arn
+  
+  SpotInterruptionRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Spot Instance Interruption Warning
+      Targets:
+        - Id: KarpenterInterruptionQueueTarget
+          Arn: !GetAtt KarpenterInterruptionQueue.Arn
+  
+  RebalanceRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance Rebalance Recommendation
+      Targets:
+        - Id: KarpenterInterruptionQueueTarget
+          Arn: !GetAtt KarpenterInterruptionQueue.Arn
+  
+  InstanceStateChangeRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance State-change Notification
+      Targets:
+        - Id: KarpenterInterruptionQueueTarget
+          Arn: !GetAtt KarpenterInterruptionQueue.Arn
+
+  Cluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !If [ notClusterName, !Ref AWS::NoValue, !Ref ClusterName ]
+      EncryptionConfig:
+        - Resources: [ secrets ]
+          Provider:
+            KeyArn: !GetAtt KmsKey.Arn       
+      Version: !Ref ClusterVersion
+      RoleArn: !GetAtt ClusterRole.Arn
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: !FindInMap [ Cluster, EndpointPrivateAccess, Access ]
+        EndpointPublicAccess: !FindInMap [ Cluster, EndpointPublicAccess, Access ]
+        SecurityGroupIds:
+          - !Ref ControlPlaneSecurityGroup
+        SubnetIds: !Ref SubnetIds
+      Logging:
+        ClusterLogging:
+          !If
+            - isPCI
+            -
+              EnabledTypes:
+                - Type: api
+                - Type: audit
+                - Type: authenticator   
+                - Type: scheduler
+                - Type: controllerManager
+            - 
+              EnabledTypes:
+                - Type: authenticator
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'            
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  EKS
+
+  IngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow connection VPC to EKS Fargate pods
+      FromPort: 0
+      ToPort: 65535
+      IpProtocol: "-1"
+      GroupId: !GetAtt Cluster.ClusterSecurityGroupId
+      CidrIp: !Ref CidrIp
+
+  FargatePodExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub FargatePodExecutionRole-${Cluster}
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "eks-fargate-pods.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                  "ArnLike": {
+                    "aws:SourceArn": "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:fargateprofile/${Cluster}/*"
+                  }
+                }
+              }
+            ]
+          }        
+        - Cluster:
+            !Ref Cluster
+      Policies:
+        - PolicyName: !Sub FargatePodExecutionPolicy-${Cluster}      
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'logs:CreateLogStream'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:DescribeLogStreams'
+                  - 'logs:PutLogEvents'
+                  - 'logs:PutRetentionPolicy'
+                  - 'logs:DeleteRetentionPolicy'
+                Resource: '*'
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  EKSFargateProfile:
+    Type: AWS::EKS::FargateProfile
+    Properties: 
+      ClusterName: !Ref Cluster
+      PodExecutionRoleArn: !GetAtt FargatePodExecutionRole.Arn
+      FargateProfileName: EKSFargateProfile
+      Selectors: 
+        - Namespace: "*" 
+          Labels:
+              - Key: fargate
+                Value: "true"
+        - Namespace: "kube-system" 
+          Labels:
+              - Key: eks.amazonaws.com/component
+                Value: "coredns"
+        - Namespace: "kube-system"
+          Labels:
+              - Key: fargate
+                Value: "true"
+        - Namespace: "ingress-nginx"
+        - Namespace: "karpenter"
+      Subnets: !Ref SubnetIds
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  FargateProfile
+
+  EKSFargateProfileRancher:
+    DependsOn: EKSFargateProfile
+    Type: AWS::EKS::FargateProfile
+    Properties: 
+      ClusterName: !Ref Cluster
+      PodExecutionRoleArn: !GetAtt RancherFargatePodExecutionRole.Arn
+      Selectors: 
+        - Namespace: "cattle-*" 
+      Subnets: !Ref SubnetIds
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'      
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  FargateProfile
+
+  RancherFargatePodExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub RancherFargatePodExecutionRole-${Cluster}
+      AssumeRolePolicyDocument: !Sub 
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "eks-fargate-pods.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                  "ArnLike": {
+                    "aws:SourceArn": "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:fargateprofile/${Cluster}/*"
+                  }
+                }
+              },
+              {
+                  "Effect": "Allow",
+                  "Principal": {
+                      "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}"
+                  },
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                      "StringEquals": {
+                          "${eksEndpoint}:sub": "system:serviceaccount:cattle-resources-system:rancher-backup"
+                      }
+                  }
+              }              
+            ]
+          }        
+        - Cluster:
+            !Ref Cluster
+          eksId:
+            !Select [ 4, !Split ["/", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]
+          eksEndpoint:
+            !Select [ 1, !Split [ "//", !GetAtt Cluster.OpenIdConnectIssuerUrl ]]            
+      Policies:
+        - PolicyName: !Sub RancherFargatePodExecutionPolicy-${Cluster}      
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:List*'
+                  - 's3:DeleteObject'
+                Resource: '*'
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  Role
+
+  OidcEKS:
+    Type: AWS::IAM::OIDCProvider
+    Properties: 
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList: 
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280 
+      Url: !GetAtt Cluster.OpenIdConnectIssuerUrl
+      Tags: 
+        - Key:    application 
+          Value:  !Sub '${Application}'
+        - Key:    business_unit
+          Value:  !Sub '${BusinessUnitName}'
+        - Key:    cloud_provider
+          Value:  !Sub '${CloudProvider}'
+        - Key:    component
+          Value:  !Sub '${Component}'
+        - Key:    env
+          Value:  !Sub '${Env}'
+        - Key:    owner
+          Value:  !Sub '${Owner}'
+        - Key:    pci_classification
+          Value:  !Sub '${PCIClassification}'
+        - Key:    pci_scope
+          Value:  !Sub '${PCIScope}'
+        - Key:    platform
+          Value:  !Sub '${Platform}'
+        - Key:    squad
+          Value:  !Sub '${Squad}'
+        - Key:    email
+          Value:  !Sub '${Email}'
+        - Key:    slack
+          Value:  !Sub '${Slack}'
+        - Key:    service
+          Value:  !Sub '${Service}'
+        - Key:    stack
+          Value:  !Sub '${Stack}'
+        - Key:    resource
+          Value:  OIDCProvider
+
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      SecurityGroupIngress:
+      - SourcePrefixListId: !FindInMap [ RegionMap, !Ref AWS::Region, PrefixList]
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        Description: "Allow access to Rundeck"
+      - CidrIp: !Ref CidrIp
+        FromPort: 443
+        IpProtocol: tcp
+        ToPort: 443
+        Description: "Allow access to Local VPC"        
+      - CidrIp: 10.144.0.0/16
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: 'tcp'
+        Description: "Allow access to Account: devopstools-dev"
+      - CidrIp: 10.152.0.0/16
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: 'tcp'
+        Description: "Allow access to Account: devopstools-prd"
+      - CidrIp: 10.193.132.0/23
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: 'tcp'
+        Description: "Allow access to Account: sretools-prd"
+      SecurityGroupEgress:
+        - Description: Allow outbound traffic
+          IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: "${AWS::StackName}/ControlPlaneSecurityGroup"      
+      VpcId: !Ref VpcId
+
+  KarpenterNodesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub eks-karpenter-sg-${Cluster}
+      GroupDescription: SecurityGroup to Nodes provisioned by Karpenter
+      SecurityGroupIngress:  
+      - CidrIp: !Ref CidrIp
+        FromPort: 0
+        ToPort: 65535
+        IpProtocol: 'tcp'
+        Description: "Allow access to Local VPC"  
+      - CidrIp: 10.255.128.0/19
+        FromPort: 0
+        ToPort: 65535
+        IpProtocol: 'tcp'
+        Description: "Allow access to Prisma VPN"
+      - SourceSecurityGroupId: !GetAtt Cluster.ClusterSecurityGroupId
+        FromPort: 0
+        ToPort: 65535
+        IpProtocol: '-1'
+        Description: "Allow SecurityGroup of EKS Cluster"
+      SecurityGroupEgress:
+        - Description: Allow outbound traffic
+          IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: !Sub eks-karpenter-sg-${Cluster}
+      - Key: karpenter.sh/security-group
+        Value: !Sub ${Cluster}
+
+  KarpenterRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      SourceSecurityGroupId: !GetAtt KarpenterNodesSecurityGroup.GroupId
+      GroupId: !GetAtt KarpenterNodesSecurityGroup.GroupId
+      FromPort: 0
+      ToPort: 65535
+      IpProtocol: '-1'
+      Description: "Allow communication between EKS Nodes"
+
+  EKSNginxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with nlb
+      GroupName: !Sub eks-nginx-ingress-sg-${Cluster}
+      SecurityGroupIngress:
+      - CidrIp: !Ref CidrIp
+        FromPort: 443
+        IpProtocol: tcp
+        ToPort: 443
+        Description: "Allow access to Local VPC"        
+      - CidrIp: 10.70.39.84/32
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: 'tcp'
+        Description: "Allow access to Rundeck Latam"   
+      - CidrIp: 10.255.128.0/19
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: 'tcp'
+        Description: "Allow access to Prisma VPN"
+      - !If [ notCidrIpOp1, 
+            {
+              CidrIp: !Ref CidrIpOp1,
+              FromPort: 443,
+              IpProtocol: tcp,
+              ToPort: 443,
+              Description: !If [ notDescriptionCidrIpOp1, !Ref DescriptionCidrIpOp1, "Optional CIDR" ]
+            },
+            !Ref AWS::NoValue
+          ]
+      - !If [ notCidrIpOp2, 
+            {
+              CidrIp: !Ref CidrIpOp2,
+              FromPort: 443,
+              IpProtocol: tcp,
+              ToPort: 443,
+              Description: !If [ notDescriptionCidrIpOp2, !Ref DescriptionCidrIpOp2, "Optional CIDR" ]
+            },
+            !Ref AWS::NoValue
+          ]
+      - !If [ notCidrIpOp3, 
+            {
+              CidrIp: !Ref CidrIpOp3,
+              FromPort: 443,
+              IpProtocol: tcp,
+              ToPort: 443,
+              Description: !If [ notDescriptionCidrIpOp3, !Ref DescriptionCidrIpOp3, "Optional CIDR" ]
+            },
+            !Ref AWS::NoValue
+        ]
+      SecurityGroupEgress:
+        - Description: Allow outbound traffic
+          IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub eks-nginx-ingress-sg-${Cluster}  
+      VpcId: !Ref VpcId
+
+  KmsKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: KMS Key for EKS Secret encryption 
+      Enabled: True
+      EnableKeyRotation: True
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+          - Sid: Enable EKS Permissions
+            Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: 
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: '*'
+
+Outputs:
+  ClusterStackName:
+    Value: !Sub ${AWS::StackName}
+    Description: Cluster StackName
+  ClusterName:
+    Value: !Ref Cluster
+    Description: Cluster Name
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ClusterName-${Env}
+  ClusterEndpoint:
+    Value: !GetAtt Cluster.Endpoint
+    Description: Cluster endpoint
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ClusterEndpoint-${Env}
+  ClusterCertificateAuthorityData:
+    Value: !GetAtt Cluster.CertificateAuthorityData
+    Description: Cluster CertificateAuthorityData
+  ClusterSecurityGroupId:
+    Value: !GetAtt Cluster.ClusterSecurityGroupId    
+    Description: ControlPlaneSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ClusterSecurityGroupId-${Env}
+  ClusterArn:
+    Value: !GetAtt Cluster.Arn
+    Description: Cluster Arn
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-cluster-arn-${Env}"
+  ClusterOpenIdConnectIssuerUrl:
+    Value: !GetAtt Cluster.OpenIdConnectIssuerUrl
+    Description: Cluster OpenIdConnectIssuerUrl
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-OpenIdConnectIssuerUrls-${Env}"
+  ClusterFargatePodExecutionRole:
+    Value: !GetAtt FargatePodExecutionRole.Arn
+    Description: IAM Role to Fargate Profile.
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-FargatePodExecutionRole-${Env}"      

@@ -1,0 +1,331 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Criacao de API Public Gateway v 1.0
+
+Parameters:
+  Versao:
+    Type: String
+    Default: 1.0
+  Env:
+    Description: stack environment
+    Type: String
+    Default: dev
+  CustomAccessLogFormatParameter:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: CustomAccessLogFormat
+  TemplateURL:
+    Type: String
+    Default: https://eliezerraj-908671954593-devops.s3.us-east-2.amazonaws.com/cf-templates/apigw-pub-v1-template.yaml
+  AuthorizerARN:
+    Type: String
+    Default: arn:aws:lambda:us-east-2:908671954593:function:lambda-go-auth-apigw
+  AuthorizerUri:
+    Type: String
+    Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:lambda-go-auth-apigw/invocations
+  VpcLinkIdglobal:
+    Description: VpcLinkName(ID)
+    Type: String
+    Default: umjxfk
+  VPCEndpointDNS:
+    Description: Hostname use for call an ingress-rule
+    Type: String
+    Default: go-order.architecture.caradhras.io #alias r53 for nlb
+  #WafaclArn:
+  #  Type: AWS::SSM::Parameter::Value<String>
+  #  Description: Association WAF in API ApiGateway
+  #  Default: wafarn-aclbasic
+
+Conditions:
+  isPrd:
+    Fn::Equals:
+    - Ref: Env
+    - prd
+
+Mappings:
+  Network:
+    dev:
+      DomainName: go-order-us-east-2.architecture.caradhras.io
+      EdgeCertificateArn: arn:aws:acm:us-east-2:908671954593:certificate/a784955c-9a8b-4403-bea2-527035ab3782
+      RegionalCertificateArn: arn:aws:acm:us-east-2:908671954593:certificate/a784955c-9a8b-4403-bea2-527035ab3782
+      HostedZoneId: Z08808671BQOU9WUREDU
+  Tag:
+    Service:
+      value: go-order
+    Squad:
+      value: architecture
+    Slack:
+      value: architecture
+    Email:
+      value: architecture
+    CustomDomainTemplate:
+      value: 2.0.0
+
+Resources:
+  AccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /apigateway/go-order-us-east-2
+      Tags:
+      - Key: env
+        Value:
+          Ref: Env
+      - Key: service
+        Value:
+          Fn::FindInMap:
+          - Tag
+          - Service
+          - value
+      - Key: stack
+        Value:
+          Fn::Sub: ${AWS::StackName}
+      - Key: squad
+        Value:
+          Fn::FindInMap:
+          - Tag
+          - Squad
+          - value
+      - Key: slack
+        Value:
+          Fn::FindInMap:
+          - Tag
+          - Slack
+          - value
+      - Key: email
+        Value:
+          Fn::FindInMap:
+          - Tag
+          - Email
+          - value
+      - Key: resource
+        Value: log-group
+      
+  #WafAssociation:
+  #  Type: AWS::WAFv2::WebACLAssociation
+  #  Properties:
+  #    ResourceArn:
+  #      Fn::Sub: arn:aws:apigateway:${AWS::Region}::/restapis/${GlobalAPIGateway}/stages/${GlobalAPIGateway.Stage}
+  #    WebACLArn:
+  #      Ref: WafaclArn
+
+  GlobalCustomDomainName:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        DomainName:
+          Fn::FindInMap:
+          - Network
+          - Ref: Env
+          - DomainName
+        Env:
+          Ref: Env
+        Service:
+          Fn::FindInMap:
+          - Tag
+          - Service
+          - value
+        Squad:
+          Fn::FindInMap:
+          - Tag
+          - Squad
+          - value
+        Slack:
+          Fn::FindInMap:
+          - Tag
+          - Slack
+          - value
+        Email:
+          Fn::FindInMap:
+          - Tag
+          - Email
+          - value
+        HostedZoneId:
+          Fn::FindInMap:
+          - Network
+          - Ref: Env
+          - HostedZoneId
+        RegionalCertificateArn:
+          Fn::FindInMap:
+          - Network
+          - Ref: Env
+          - RegionalCertificateArn
+        EndpointType: REGIONAL
+      TemplateURL: !Ref TemplateURL
+
+  GlobalAPIGateway:
+    DependsOn: GlobalCustomDomainName
+    Type: AWS::Serverless::Api
+    Properties:
+      AlwaysDeploy: true
+      StageName: qa
+      DisableExecuteApiEndpoint: true
+      EndpointConfiguration:
+        Type: REGIONAL
+      Variables:
+        apiName: go-order
+      Tags:
+        env:
+          Ref: Env
+        service:
+          Fn::FindInMap:
+          - Tag
+          - Service
+          - value
+        stack:
+          Fn::Sub: ${AWS::StackName}
+        squad:
+          Fn::FindInMap:
+          - Tag
+          - Squad
+          - value
+        slack:
+          Fn::FindInMap:
+          - Tag
+          - Slack
+          - value
+        email:
+          Fn::FindInMap:
+          - Tag
+          - Email
+          - value
+        resource: api-gateway
+      AccessLogSetting:
+        DestinationArn:
+          Fn::GetAtt:
+          - AccessLogGroup
+          - Arn
+        Format:
+          Ref: CustomAccessLogFormatParameter
+      MethodSettings:
+      - ResourcePath: /*
+        HttpMethod: '*'
+        MetricsEnabled: true
+        DataTraceEnabled: false
+        LoggingLevel: INFO
+      TracingEnabled: false
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          title: go-order
+        tags:
+        - name: go-order
+          description: API go-order
+        schemes:
+        - https
+        paths:
+          /{proxy+}:
+            get:
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: 200 response
+                  schema:
+                    $ref: '#/definitions/Empty'
+              security:
+              - lambda-go-auth-apigw: []
+              x-amazon-apigateway-integration:
+                type: http_proxy
+                httpMethod: GET
+                uri:
+                  Fn::Sub: https://${VPCEndpointDNS}/{proxy}
+                responses:
+                  default:
+                    statusCode: '200'
+                requestParameters:
+                  integration.request.path.proxy: method.request.path.proxy
+                  integration.request.header.X-Request-ID: context.requestId
+                  integration.request.header.X-AppClient-ID: context.authorizer.principalId
+                  integration.request.header.client-id: context.authorizer.tenant_id
+                  integration.request.header.X-Forwarded-For: context.identity.sourceIp
+                passthroughBehavior: when_no_match
+                connectionType: VPC_LINK
+                connectionId: !Ref VpcLinkIdglobal
+            post:
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: 200 response
+                  schema:
+                    $ref: '#/definitions/Empty'
+              security:
+              - lambda-go-auth-apigw: []
+              x-amazon-apigateway-integration:
+                type: http_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: https://${VPCEndpointDNS}/{proxy}
+                responses:
+                  default:
+                    statusCode: '200'
+                requestParameters:
+                  integration.request.path.proxy: method.request.path.proxy
+                  integration.request.header.X-Request-ID: context.requestId
+                  integration.request.header.X-AppClient-ID: context.authorizer.principalId
+                  integration.request.header.client-id: context.authorizer.tenant_id
+                  integration.request.header.X-Forwarded-For: context.identity.sourceIp
+                passthroughBehavior: when_no_match
+                connectionType: VPC_LINK
+                connectionId: !Ref VpcLinkIdglobal
+        x-amazon-apigateway-api-key-source: AUTHORIZER
+        securityDefinitions:
+          lambda-go-auth-apigw:
+            type: apiKey
+            name: Unused
+            in: header
+            x-amazon-apigateway-authtype: custom
+            x-amazon-apigateway-authorizer:
+              authorizerUri: !Ref AuthorizerUri
+              authorizerResultTtlInSeconds: 600
+              identitySource: method.request.header.Authorization, context.path, context.httpMethod, context.identity.sourceIp
+              type: request
+        definitions:
+          Empty:
+            type: object
+            title: Empty Schema
+        x-amazon-apigateway-gateway-responses:
+          UNAUTHORIZED:
+            statusCode: 401
+            responseTemplates:
+              application/json: '{"error": { "id": "$context.requestId", "description":
+                "Unauthorized", "code": "401"}}'
+          ACCESS_DENIED:
+            statusCode: 403
+            responseTemplates:
+              application/json: '{"error": { "id": "$context.requestId", "description":
+                "Forbidden", "code": "403"}}'
+          DEFAULT_4XX:
+            statusCode: 404
+            responseTemplates:
+              application/json: '{"error": { "id": "$context.requestId", "description":
+                "Resource not found", "code": "404"}}'
+          DEFAULT_5XX:
+            statusCode: 500
+            responseTemplates:
+              application/json: '{"error": { "id": "$context.requestId", "description":
+                "Internal server error", "code": "500"}}'
+          THROTTLED:
+            statusCode: 429
+            responseTemplates:
+              application/json: '{"error": { "id": "$context.requestId", "description":
+                "Too many requests", "code": "429"}}'
+  
+  GlobalAPIBaseMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName:
+        Fn::FindInMap:
+        - Network
+        - Ref: Env
+        - DomainName
+      RestApiId:
+        Ref: GlobalAPIGateway
+      Stage:
+        Ref: GlobalAPIGateway.Stage
+
+  ApiInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref AuthorizerARN
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com

@@ -7,9 +7,9 @@ metadata:
     app: *app-name
 data:
   API_VERSION: "1.0"
-  POD_NAME: "go-order.k8"
+  POD_NAME: "go-order-us-east-1.k8"
   PORT: "5010"
-  DB_HOST: "db-aurora-arch-01-us-east-2.cluster-couoacqalfwt.us-east-2.rds.amazonaws.com"
+  DB_HOST: "db-aurora-arch-01-us-east-1-cluster-1.cluster-ro-c944h9fnit72.us-east-1.rds.amazonaws.com"
   DB_PORT: "5432"
   DB_NAME: "postgres"
   DB_SCHEMA: "public"
@@ -17,9 +17,9 @@ data:
   SETPOD_AZ: "false"
   ENV: "dev"  
   OTEL_EXPORTER_OTLP_ENDPOINT: "arch-eks-01-xray-collector.default.svc.cluster.local:4317"
-  QUEUE_URL_ORDER: "https://sqs.us-east-2.amazonaws.com/908671954593/order.fifo"
+  QUEUE_URL_ORDER: "https://sqs.us-east-1.amazonaws.com/908671954593/order.fifo"
   AWS_REGION: "us-east-2"
   POD_QUEUE_TYPE: "sqs"
   ORDER_TABLE_NAME: "order-table"
-  BUCKET_NAME: eliezer-992382474575-us-east-2-go-order/
+  BUCKET_NAME: eliezer-992382474575-us-east-1-go-order/
   FILE_PATH: order/
