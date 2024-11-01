@@ -13,9 +13,34 @@ Parameters:
       - dev
       - hml
       - prd
-  Squad:
+  Owner:
     Type: String
     Default: architecture
+  PciScope:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  PciClassificationName:
+    Type: String
+    Default: non-pci
+    AllowedValues:
+      - pci
+      - pci-connected
+      - non-pci
+  BusinessUnitName:
+    Type: String
+    Default: banking
+  PlatformName:
+    Type: String
+    Default: dockone
+  ApplicationName:
+    Type: String
+    Default: app architecture
+  ComponentName:
+    Type: String
+    Default: apigw logformat architecture
   SQSName:
     Type: String
     Default: order.fifo
@@ -42,10 +67,24 @@ Resources:
           Value: !Ref Env
         - Key: stack
           Value: !Sub ${AWS::StackName}
-        - Key: squad
-          Value: !Ref Squad
+        - Key: name
+          Value: !Ref SQSName
         - Key: resource
-          Value: sqs
+          Value: Queue
+        - Key: business_unit
+          Value: !Ref BusinessUnitName
+        - Key: platform
+          Value: !Ref PlatformName
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: owner
+          Value: !Ref Owner
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+        - Key: pci_scope
+          Value: !Ref PciScope
 
   SQSDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -58,10 +97,24 @@ Resources:
           Value: !Ref Env
         - Key: stack
           Value: !Sub ${AWS::StackName}
-        - Key: squad
-          Value: !Ref Squad
+        - Key: name
+          Value: !Ref SQSDLQName
         - Key: resource
-          Value: dlq-sqs
+          Value: Queue
+        - Key: business_unit
+          Value: !Ref BusinessUnitName
+        - Key: platform
+          Value: !Ref PlatformName
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: owner
+          Value: !Ref Owner
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+        - Key: pci_scope
+          Value: !Ref PciScope
 
   SQSQueuePolicy:
     Type: AWS::SQS::QueuePolicy

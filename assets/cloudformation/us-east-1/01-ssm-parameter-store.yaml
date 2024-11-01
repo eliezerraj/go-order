@@ -9,6 +9,34 @@ Parameters:
     Description: stack environment
     Type: String
     Default: dev
+  Owner:
+    Type: String
+    Default: architecture
+  PciScope:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  PciClassificationName:
+    Type: String
+    Default: non-pci
+    AllowedValues:
+      - pci
+      - pci-connected
+      - non-pci
+  BusinessUnitName:
+    Type: String
+    Default: banking
+  PlatformName:
+    Type: String
+    Default: dockone
+  ApplicationName:
+    Type: String
+    Default: app architecture
+  ComponentName:
+    Type: String
+    Default: apigw logformat architecture
 
 Resources:
   ApiLogSSMParameter:
@@ -20,6 +48,18 @@ Resources:
       Value:  |
         {"accountId":"$context.accountId","apiId":"$context.apiId","domainName":"$context.domainName","domainPrefix":"$context.domainPrefix","error.message":"$context.error.message","error.responseType":"$context.error.responseType","extendedRequestId":"$context.extendedRequestId","httpMethod":"$context.httpMethod","X-Amzn-Trace-Id":"$context.xrayTraceId","identity.sourceIp":"$context.identity.sourceIp","identity.clientCert.clientCertPem":"$context.identity.clientCert.clientCertPem","identity.clientCert.subjectDN":"$context.identity.clientCert.subjectDN","identity.clientCert.issuerDN":"$context.identity.clientCert.issuerDN","identity.clientCert.serialNumber":"$context.identity.clientCert.serialNumber","identity.clientCert.validity.notBefore":"$context.identity.clientCert.validity.notBefore","identity.clientCert.validity.notAfter":"$context.identity.clientCert.validity.notAfter","identity.userAgent":"$context.identity.userAgent","path":"$context.path","protocol":"$context.protocol","requestId":"$context.requestId","requestTime":"$context.requestTime","requestTimeEpoch":"$context.requestTimeEpoch","resourceId":"$context.resourceId","resourcePath":"$context.resourcePath","stage":"$context.stage","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength","status":"$context.status","message":"$context.authorizer.customErrorMessage","authorization_latency":"$context.authorize.latency","authorizer_latency":"$context.authorizer.latency","authentication_latency":"$context.authenticate.latency","integration_latency":"$context.integration.latency","response_latency":"$context.responseLatency","waf-error":"$context.waf.error","waf-status":"$context.waf.status","waf-latency":"$context.waf.latency"}
       Tier: Standard
+      Tags:
+        env: !Ref Env
+        stack: !Sub ${AWS::StackName}
+        name: CustomAccessLogFormat
+        resource: Parameter
+        business_unit: !Ref BusinessUnitName
+        platform: !Ref PlatformName
+        application: !Ref ApplicationName
+        component: !Ref ComponentName
+        owner: !Ref Owner
+        pci_classification: !Ref PciClassificationName
+        pci_scope: !Ref PciScope
 
 Outputs:
   ParameterValue:

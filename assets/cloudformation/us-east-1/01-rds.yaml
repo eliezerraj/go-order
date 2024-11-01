@@ -1,0 +1,253 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS 
+
+Parameters:
+  Env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - hml
+      - prd
+  BusinessUnitName:
+    Type: String
+    Default: banking
+  PlatformName:
+    Type: String
+    Default: dockone
+  ApplicationName:
+    Type: String
+    Default: app architecture
+  ComponentName:
+    Type: String
+    Default: rds architecture
+  PciClassificationName:
+    Type: String
+    Default: non-pci
+    AllowedValues:
+      - pci
+      - pci-connected
+      - non-pci
+  PciScope:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  EngineVersion:
+    Type: String
+    Default: 16.3
+    AllowedValues:
+      - 15.5
+      - 16.3
+  SecurityGroupRDS:
+    Type: String
+    Default: sg-09ced33ecfe1831d0
+  DBParameterGroupName:
+    Type: String
+    Default: db-parameter-pg16
+  SubnetDBGroupGroupName:
+    Type: String
+    Default: db-subnet-group-rds
+  RDSPostgreName:
+    Type: String
+    Default: db-arch-03
+  RDSDBName:
+    Type: String
+    Default: postgres
+  InstanceName:
+    Type: String
+    Default: db-arch-03
+  MasterUserName:
+    Type: String
+    Default: postgres
+  MasterUserPasswordName:
+    Type: String
+    Default: postgres
+  Owner:
+    Type: String
+    Default: architecture
+  isMultiAZ:
+    Description: Multi AZ
+    Type: "String"
+    Default: "False"
+    AllowedValues:
+      - "True"
+      - "False"
+  StorageEncrypted:
+    Type: "String"
+    Default: "True"
+    AllowedValues:
+      - "True"
+      - "False"
+  EnablePerformanceInsights:
+    Type: "String"
+    Default: true
+    AllowedValues:
+      - true
+      - false  
+  EnableEnhancedMonitoring:
+    Description: 'Provide metrics in real time for the operating system (OS) that your DB instance runs on.'
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false  
+
+Conditions:
+  HasEnhancedMonitoring: !Equals [ !Ref EnableEnhancedMonitoring, 'true' ]
+
+Mappings:
+  SubnetIds:
+    dev:
+      SubnetAZA: subnet-029a372960dd60525
+      SubnetAZB: subnet-054b921a3fa58e388
+      SubnetAZC: subnet-090db162e7b4cba17
+    hml:
+      SubnetAZA: subnet-0fb3b86a8657a696f
+      SubnetAZB: subnet-0fb6727ed0041b799
+      SubnetAZC: subnet-0c45c1b6d9ba2cfc5
+    prd:
+      SubnetAZA: subnet-0a0c6c1b76845ca8a
+      SubnetAZB: subnet-0d2dc2da1fb208470
+      SubnetAZC: subnet-0446d425f47765e5b
+
+  #SecretManagerRDS:
+  #  dev:
+  #    RDSSecretManagerArn: "arn:aws:secretsmanager:us-east-2:792192516784:secret:992382474575_arch-rds-02-access-ncEwuy:password"
+  #  hml:
+  #    RDSSecretManagerArn: "arn:aws:secretsmanager:us-east-2:792192516784:secret:992382474575_arch-rds-02-access-ncEwuy:password"
+  #  prd:
+  #    RDSSecretManagerArn: "arn:aws:secretsmanager:us-east-2:792192516784:secret:992382474575_arch-rds-02-access-ncEwuy:password"
+
+Resources:
+  SubnetDBGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet for RDS DataBases
+      SubnetIds:
+        - !FindInMap [SubnetIds, !Ref Env, SubnetAZA]
+        - !FindInMap [SubnetIds, !Ref Env, SubnetAZB]
+        - !FindInMap [SubnetIds, !Ref Env, SubnetAZC]
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: name
+          Value: !Ref RDSPostgreName
+        - Key: resource
+          Value: DBSubnetGroup
+        - Key: business_unit
+          Value: !Ref BusinessUnitName
+        - Key: platform
+          Value: !Ref PlatformName
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: owner
+          Value: !Ref Owner
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+        - Key: pci_scope
+          Value: !Ref PciScope
+
+  RDSDBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Database Parameter Group
+      Family: postgres16
+      Parameters:
+        shared_preload_libraries: pg_stat_statements
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: name
+          Value: !Ref RDSPostgreName
+        - Key: resource
+          Value: DBParameterGroup
+        - Key: business_unit
+          Value: !Ref BusinessUnitName
+        - Key: platform
+          Value: !Ref PlatformName
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: owner
+          Value: !Ref Owner
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+        - Key: pci_scope
+          Value: !Ref PciScope
+
+  RDSPostgre:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t4g.micro
+      DBName: !Ref RDSDBName
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 7
+      DBInstanceIdentifier: !Ref InstanceName
+      DBSubnetGroupName: !Ref SubnetDBGroup
+      Engine: postgres
+      EngineVersion: !Ref EngineVersion
+      MasterUsername: !Ref MasterUserName
+      MasterUserPassword: !Ref MasterUserPasswordName
+      #MasterUserSecret: 
+      #  SecretArn: "arn:aws:secretsmanager:us-east-2:792192516784:secret:992382474575_arch-rds-02-access-ncEwuy:password"
+      MultiAZ: !Ref isMultiAZ
+      Port: 5432
+      PubliclyAccessible: false
+      StorageType: gp3
+      StorageEncrypted: !Ref StorageEncrypted
+      MonitoringInterval: !If [HasEnhancedMonitoring, 60, 0]
+      MonitoringRoleArn: !If [HasEnhancedMonitoring, !GetAtt ['EnhancedMonitoringRole', 'Arn'], !Ref 'AWS::NoValue']
+      DBParameterGroupName: !Ref RDSDBParameterGroup
+      EnablePerformanceInsights: !Ref EnablePerformanceInsights
+      VPCSecurityGroups: 
+        - !Ref SecurityGroupRDS
+      Tags:
+        - Key: env
+          Value: !Ref Env
+        - Key: stack
+          Value: !Sub ${AWS::StackName}
+        - Key: name
+          Value: !Ref RDSPostgreName
+        - Key: resource
+          Value: DBInstance
+        - Key: business_unit
+          Value: !Ref BusinessUnitName
+        - Key: platform
+          Value: !Ref PlatformName
+        - Key: application
+          Value: !Ref ApplicationName
+        - Key: component
+          Value: !Ref ComponentName
+        - Key: owner
+          Value: !Ref Owner
+        - Key: pci_classification
+          Value: !Ref PciClassificationName
+        - Key: pci_scope
+          Value: !Ref PciScope
+
+  EnhancedMonitoringRole:
+    Condition: HasEnhancedMonitoring
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: monitoring.rds.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+      Path: "/"
