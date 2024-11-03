@@ -9,7 +9,7 @@ data:
   API_VERSION: "1.0"
   POD_NAME: "go-order.k8"
   PORT: "5010"
-  DB_HOST: "db-aurora-arch-01-us-east-2.cluster-couoacqalfwt.us-east-2.rds.amazonaws.com"
+  DB_HOST: "rds-proxy-db-arch.proxy-couoacqalfwt.us-east-2.rds.amazonaws.com"
   DB_PORT: "5432"
   DB_NAME: "postgres"
   DB_SCHEMA: "public"
