@@ -18,7 +18,7 @@ data:
   ENV: "dev"  
   OTEL_EXPORTER_OTLP_ENDPOINT: "arch-eks-01-xray-collector.default.svc.cluster.local:4317"
   QUEUE_URL_ORDER: "https://sqs.us-east-1.amazonaws.com/908671954593/order.fifo"
-  AWS_REGION: "us-east-2"
+  AWS_REGION: "us-east-1"
   POD_QUEUE_TYPE: "sqs"
   ORDER_TABLE_NAME: "order-table"
   BUCKET_NAME: eliezer-992382474575-us-east-1-go-order/

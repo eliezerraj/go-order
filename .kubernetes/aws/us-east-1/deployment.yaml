@@ -22,7 +22,7 @@ spec:
       - name: volume-secret
         secret:
           secretName: es-rds-arch-secret-go-order
-      #securityContext:
+      securityContext:
         runAsUser: 1000
         runAsGroup: 2000
         fsGroup: 3000
