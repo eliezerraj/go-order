@@ -65,13 +65,24 @@ func Config(database_url string) (*pgxpool.Config) {
 func NewDatabasePGServer(ctx context.Context, databaseRDS *core.DatabaseRDS) (DatabasePG, error) {
 	childLogger.Debug().Msg("NewDatabasePGServer")
 	
+	/*sslCertPath := "/mnt/c/Eliezer/workspace/github.com/go-order/cmd/us-east-1-bundle.pem"
+	fmt.Println("=============================>",sslCertPath)
+
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=verify-full&sslrootcert=%s", 
+							databaseRDS.User, 
+							databaseRDS.Password, 
+							databaseRDS.Host, 
+							databaseRDS.Port, 
+							databaseRDS.DatabaseName,
+							sslCertPath)*/
+	
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", 
 							databaseRDS.User, 
 							databaseRDS.Password, 
 							databaseRDS.Host, 
 							databaseRDS.Port, 
 							databaseRDS.DatabaseName) 
-							
+
 	connPool, err := pgxpool.NewWithConfig(ctx, Config(connStr))
 	if err != nil {
 		return DatabasePGServer{}, err
