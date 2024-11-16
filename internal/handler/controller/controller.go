@@ -121,3 +121,30 @@ func (h *HttpWorkerAdapter) Add( rw http.ResponseWriter, req *http.Request) erro
 
 	return WriteJSON(rw, http.StatusOK, res)
 }
+
+func (h *HttpWorkerAdapter) AddAsync( rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Debug().Msg("AddAsync")
+
+	span := lib.Span(req.Context(), "handler.AddAsync")
+	defer span.End()
+
+	order := core.Order{}
+	err := json.NewDecoder(req.Body).Decode(&order)
+    if err != nil {
+		apiError := NewAPIError(http.StatusBadRequest, erro.ErrUnmarshal)
+		return apiError
+    }
+	defer req.Body.Close()
+
+	res, err := h.workerService.AddAsync(req.Context(), &order)
+	if err != nil {
+		var apiError APIError
+		switch err {
+		default:
+			apiError = NewAPIError(http.StatusInternalServerError, err)
+		}
+		return apiError
+	}
+
+	return WriteJSON(rw, http.StatusOK, res)
+}

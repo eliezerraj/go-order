@@ -79,6 +79,10 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 	addOrder.HandleFunc("/add", middleware.MiddleWareErrorHandler(httpWorkerAdapter.Add))
 	addOrder.Use(otelmux.Middleware("go-order"))
 
+	addAsysncOrder := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
+	addAsysncOrder.HandleFunc("/addAsync", middleware.MiddleWareErrorHandler(httpWorkerAdapter.AddAsync))
+	addAsysncOrder.Use(otelmux.Middleware("go-order"))
+	
 	getOrder := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
 	getOrder.HandleFunc("/get/{id}",middleware.MiddleWareErrorHandler(httpWorkerAdapter.Get))
 	getOrder.Use(otelmux.Middleware("go-order"))

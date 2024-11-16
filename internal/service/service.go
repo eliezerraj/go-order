@@ -81,6 +81,7 @@ func (s WorkerService) Add(ctx context.Context, order *core.Order) (*core.Order,
 	eventData := core.EventData{Order: order}
 	event := core.Event{
 		EventDate: time.Now(),
+		EventType: "NO_CRQS",
 		EventData:	&eventData,	
 	}
 	
@@ -100,4 +101,26 @@ func (s WorkerService) Add(ctx context.Context, order *core.Order) (*core.Order,
 	}
 
 	return res, nil
+}
+
+func (s WorkerService) AddAsync(ctx context.Context, order *core.Order) (*core.Order, error){
+	childLogger.Debug().Msg("AddAsync")
+
+	span := lib.Span(ctx, "service.AddAsync")
+	defer span.End()
+
+	order.Status = "PENDING"
+	eventData := core.EventData{Order: order}
+	event := core.Event{
+		EventDate: time.Now(),
+		EventType: "CQRS",
+		EventData:	&eventData,	
+	}
+	
+	err := s.producerWorker.Producer(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }
