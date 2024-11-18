@@ -50,8 +50,7 @@ func (r *DynamoRepository) Add(ctx context.Context, order core.Order) (*core.Ord
 	order.SK 		= "ORDER-" + order.OrderID
 	order.CreateAt 	= time.Now()
 
-	log.Debug().Interface("======> order :",order).Msg("")
-
+	//log.Debug().Interface("======> order :",order).Msg("")
 	/*item2 := map[string]types.AttributeValue{
         "pk": 		&types.AttributeValueMemberS{Value: "12345"},
         "sk":       	&types.AttributeValueMemberS{Value: "John Doe"},
@@ -65,7 +64,7 @@ func (r *DynamoRepository) Add(ctx context.Context, order core.Order) (*core.Ord
 		return nil, erro.ErrUnmarshal
 	}
 
-	log.Debug().Interface(">>>>>>>>>>>>>>> item :",item).Msg("")
+	//log.Debug().Interface(">>>>>>>>>>>>>>> item :",item).Msg("")
 
 	putInput := &dynamodb.PutItemInput{
         TableName: r.tableName,

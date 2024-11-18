@@ -9,8 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 	"context"
-	//"fmt"
-	//"encoding/base64"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"

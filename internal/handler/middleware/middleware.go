@@ -1,7 +1,8 @@
 package middleware
 
-import (	
+import (
 	"net/http"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/go-order/internal/handler/controller"

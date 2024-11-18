@@ -130,6 +130,7 @@ func (h *HttpWorkerAdapter) AddAsync( rw http.ResponseWriter, req *http.Request)
 
 	order := core.Order{}
 	err := json.NewDecoder(req.Body).Decode(&order)
+
     if err != nil {
 		apiError := NewAPIError(http.StatusBadRequest, erro.ErrUnmarshal)
 		return apiError
