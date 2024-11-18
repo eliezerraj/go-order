@@ -9,6 +9,7 @@ type DatabaseRDS struct {
 	Password			string `json:"password"`
 	Db_timeout			int	`json:"db_timeout"`
 	Postgres_Driver		string `json:"postgres_driver"`
+	CertPem	    		string 
 }
 
 type DatabaseDynamo struct {

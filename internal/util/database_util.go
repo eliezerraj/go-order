@@ -33,6 +33,9 @@ func GetDatabaseEnv() core.DatabaseRDS {
 	if os.Getenv("DB_DRIVER") !=  "" {	
 		databaseRDS.Postgres_Driver = os.Getenv("DB_DRIVER")
 	}
+	if os.Getenv("TLS_RDS_CERT") !=  "" {	
+		databaseRDS.CertPem = os.Getenv("TLS_RDS_CERT")
+	}
 
 	// Get Database Secrets
 	file_user, err := os.ReadFile("/var/pod/secret/username")
