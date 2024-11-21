@@ -71,7 +71,7 @@ func (h *HttpWorkerAdapter) Header(rw http.ResponseWriter, req *http.Request) {
 func (h *HttpWorkerAdapter) Get(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Debug().Msg("Get")
 
-	span := lib.Span(req.Context(), "handler.Get")
+	span := lib.Span(req.Context(), "controller.Get")
 	defer span.End()
 	
 	order := core.Order{}
@@ -98,7 +98,7 @@ func (h *HttpWorkerAdapter) Get(rw http.ResponseWriter, req *http.Request) error
 func (h *HttpWorkerAdapter) Add( rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Debug().Msg("Add")
 
-	span := lib.Span(req.Context(), "handler.Add")
+	span := lib.Span(req.Context(), "controller.Add")
 	defer span.End()
 
 	order := core.Order{}
@@ -125,7 +125,7 @@ func (h *HttpWorkerAdapter) Add( rw http.ResponseWriter, req *http.Request) erro
 func (h *HttpWorkerAdapter) AddAsync( rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Debug().Msg("AddAsync")
 
-	span := lib.Span(req.Context(), "handler.AddAsync")
+	span := lib.Span(req.Context(), "controller.AddAsync")
 	defer span.End()
 
 	order := core.Order{}
