@@ -162,13 +162,13 @@ func (h *HttpWorkerAdapter) UploadImage(rw http.ResponseWriter, req *http.Reques
 
 	err := req.ParseMultipartForm(20 << 20) //20Mb
 	if err != nil {
+		childLogger.Error().Err(err).Msg("erro ParseMultipartForm")
 		apiError = NewAPIError(http.StatusBadRequest, err)
 		return apiError
 	}
 
 	file, handler, err := req.FormFile("file")
 	if err != nil {
-		fmt.Print(err)
 		switch err {
 			case erro.ErrNotFound:
 				apiError = NewAPIError(http.StatusNotFound, err)
