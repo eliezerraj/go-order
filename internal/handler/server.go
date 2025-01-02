@@ -85,6 +85,10 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 	getOrder.HandleFunc("/get/{id}",middleware.MiddleWareErrorHandler(httpWorkerAdapter.Get))
 	getOrder.Use(otelmux.Middleware("go-order"))
 
+	uploadOrderImage := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
+	uploadOrderImage.HandleFunc("/upload",middleware.MiddleWareErrorHandler(httpWorkerAdapter.UploadImage))
+	uploadOrderImage.Use(otelmux.Middleware("go-order"))
+
 	// ---------------
 	srv := http.Server{
 		Addr:         ":" +  strconv.Itoa(h.httpServer.Port),      	

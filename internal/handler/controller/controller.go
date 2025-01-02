@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+	"io/ioutil"
 	"encoding/json"
 	"net/http"
 
@@ -138,6 +140,56 @@ func (h *HttpWorkerAdapter) AddAsync( rw http.ResponseWriter, req *http.Request)
 	defer req.Body.Close()
 
 	res, err := h.workerService.AddAsync(req.Context(), &order)
+	if err != nil {
+		var apiError APIError
+		switch err {
+		default:
+			apiError = NewAPIError(http.StatusInternalServerError, err)
+		}
+		return apiError
+	}
+
+	return WriteJSON(rw, http.StatusOK, res)
+}
+
+func (h *HttpWorkerAdapter) UploadImage(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Debug().Msg("UploadImage")
+
+	span := lib.Span(req.Context(), "controller.UploadImage")
+	defer span.End()
+
+	var apiError APIError
+
+	err := req.ParseMultipartForm(20 << 20) //20Mb
+	if err != nil {
+		apiError = NewAPIError(http.StatusBadRequest, err)
+		return apiError
+	}
+
+	file, handler, err := req.FormFile("file")
+	if err != nil {
+		fmt.Print(err)
+		switch err {
+			case erro.ErrNotFound:
+				apiError = NewAPIError(http.StatusNotFound, err)
+			default:
+				apiError = NewAPIError(http.StatusInternalServerError, err)
+		}
+		return apiError
+	}
+	defer file.Close()
+
+	fmt.Printf("File name: %+v\n", handler.Filename)
+	fmt.Printf("File size: %+v\n", handler.Size)
+	fmt.Printf("File header: %+v\n", handler.Header)
+
+	orderFile := core.OrderFile{}
+	orderFile.Name = handler.Filename
+	orderFile.File, err = ioutil.ReadAll(file)
+
+	//fmt.Printf("++++ > orderFile: %+v\n", orderFile)
+
+	res, err := h.workerService.UploadImage(req.Context(), &orderFile)
 	if err != nil {
 		var apiError APIError
 		switch err {

@@ -75,10 +75,10 @@ func (p *BucketWorker) PutObject(ctx context.Context,
 								file 	interface{}) error {
 	childLogger.Debug().Msg("PutObject")
 
-	log.Debug().Interface("******** fileKey :", p.bucketConfig.BucketNameKey+p.bucketConfig.FilePath + " " + fileKey).Msg("")
-
 	span := lib.Span(ctx, "bucket.PutObject")	
     defer span.End()
+
+	log.Debug().Interface("******** fileKey :", p.bucketConfig.BucketNameKey+p.bucketConfig.FilePath + fileKey).Msg("")
 
 	b, err := json.Marshal(file)
     if err != nil {
@@ -94,6 +94,30 @@ func (p *BucketWorker) PutObject(ctx context.Context,
 	}
 
 	_, err = p.client.PutObject(ctx, putObjectInput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *BucketWorker) PutImageObject(ctx context.Context, 	
+								fileKey string,
+								file 	*[]byte) error {
+	childLogger.Debug().Msg("PutObject")
+
+	span := lib.Span(ctx, "bucket.PutObject")	
+    defer span.End()
+
+	log.Debug().Interface("******** fileKey :", p.bucketConfig.BucketNameKey+p.bucketConfig.FilePath + fileKey).Msg("")
+
+	putObjectInput := &s3.PutObjectInput{
+						Bucket: aws.String(p.bucketConfig.BucketNameKey+p.bucketConfig.FilePath),
+						Key:    aws.String(fileKey),
+						Body: bytes.NewReader(*file),
+	}
+
+	_, err := p.client.PutObject(ctx, putObjectInput)
 	if err != nil {
 		return err
 	}

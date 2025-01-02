@@ -124,3 +124,17 @@ func (s WorkerService) AddAsync(ctx context.Context, order *core.Order) (*core.O
 
 	return order, nil
 }
+
+func (s WorkerService) UploadImage(ctx context.Context, oderFile *core.OrderFile) (bool, error){
+	childLogger.Debug().Msg("UploadImage")
+
+	span := lib.Span(ctx, "service.UploadImage")
+	defer span.End()
+
+	err := s.bucketWorker.PutImageObject(ctx, oderFile.Name, &oderFile.File)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
