@@ -396,7 +396,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, erro.ErrUpdate
 	}
 
-	// fill 
+	// fill it
 	resOrder.Payment = resPayment
 
 	return resOrder, nil

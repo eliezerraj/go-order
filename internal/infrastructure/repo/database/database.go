@@ -420,5 +420,6 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 				Err(err).Send()
 		return 0, errors.New(err.Error())
 	}
+	
 	return row.RowsAffected(), nil
 }
