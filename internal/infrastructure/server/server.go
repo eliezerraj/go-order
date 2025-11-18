@@ -81,6 +81,14 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	get.HandleFunc("/order/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetOrder))		
 	get.Use(otelmux.Middleware(h.appServer.Application.Name))
 
+	getOrderService := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	getOrderService.HandleFunc("/service/order/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetOrderService))		
+	getOrderService.Use(otelmux.Middleware(h.appServer.Application.Name))
+
+	checkout := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
+	checkout.HandleFunc("/checkout", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.Checkout))		
+	checkout.Use(otelmux.Middleware(h.appServer.Application.Name))
+
 	// -------   Server Http 
 
 	srv := http.Server{

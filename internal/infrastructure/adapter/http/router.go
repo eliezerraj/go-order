@@ -169,7 +169,42 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 	return coreJson.WriteJSON(rw, http.StatusOK, res)
 }
 
-// About get payment
+// About get order service
+func (h *HttpRouters) GetOrderService(rw http.ResponseWriter, req *http.Request) error {
+	// extract context		
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrderService")
+	defer span.End()
+
+	// log with context
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","GetOrderService").Send()
+
+	vars := mux.Vars(req)
+	varID := vars["id"]
+
+	varIDint, err := strconv.Atoi(varID)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+
+	order := model.Order{ID: varIDint}
+
+	res, err := h.workerService.GetOrderService(ctx, &order)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreJson.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get order
 func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error {
 	// extract context		
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
@@ -196,6 +231,38 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 	order := model.Order{ID: varIDint}
 
 	res, err := h.workerService.GetOrder(ctx, &order)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreJson.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About add order
+func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error {
+	// extract context	
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Checkout")
+	defer span.End()
+	
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","Checkout").Send()
+
+	order := model.Order{}
+	
+	err := json.NewDecoder(req.Body).Decode(&order)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+	defer req.Body.Close()
+
+	res, err := h.workerService.Checkout(ctx, &order)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)

@@ -58,7 +58,7 @@ func (w *WorkerRepository) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	return resPoolStats
 }
 
-// About create a order
+// About create an order
 func (w* WorkerRepository) AddOrder(ctx context.Context, 
 									tx pgx.Tx, 
 									order *model.Order) (*model.Order, error){
@@ -74,6 +74,7 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).
+				Str("func","AddOrder").
 				Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
@@ -109,6 +110,7 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 	if err := row.Scan(&id); err != nil {
 		w.logger.Error().
 				Ctx(ctx).
+				Str("func","AddOrder").
 				Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
@@ -119,7 +121,113 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 	return order , nil
 }
 
-// About get a order
+// About get an order
+func (w *WorkerRepository) GetOrderService(ctx context.Context,
+											order *model.Order) (*model.Order, error){
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrderService")
+	defer span.End()
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","GetOrderService").Send()
+
+	// db connection
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","GetOrderService").
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Query and Execute
+	query := `select	o.id,
+						o.transaction_id,
+						o.status,
+						o.currency,
+						o.amount,
+						o.address,
+						o.user_id,
+						o.fk_cart_id,
+						o.fk_clearance_id,
+						o.created_at,
+						o.updated_at
+				from public.order o
+				where o.id = $1`
+
+	rows, err := conn.Query(ctx, 
+							query, 
+							order.ID)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","GetOrderService").
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	defer rows.Close()
+	
+    if err := rows.Err(); err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","GetOrderService").
+				Err(err).Msg("fatal error closing rows")
+        return nil, errors.New(err.Error())
+    }
+
+	resOrder := model.Order{}
+	resCart := model.Cart{}
+	resPayment := model.Payment{}
+
+	var nullOrderUpdatedAt sql.NullTime
+
+	for rows.Next() {
+		err := rows.Scan(	
+							&resOrder.ID, 
+							&resOrder.Transaction, 
+							&resOrder.Status, 							
+							&resOrder.Currency, 
+							&resOrder.Amount,
+							&resOrder.Address,
+							&resOrder.User,
+							&resCart.ID,
+							&resPayment.ID,
+							&resOrder.CreatedAt,
+							&nullOrderUpdatedAt,
+						)
+		if err != nil {
+			w.logger.Error().
+					Ctx(ctx).
+					Str("func","GetOrderService").
+					Err(err).Send()
+			return nil, errors.New(err.Error())
+        }
+
+		if nullOrderUpdatedAt.Valid {
+        	resOrder.UpdatedAt = &nullOrderUpdatedAt.Time
+    	} else {
+			resOrder.UpdatedAt = nil
+		}
+
+		resOrder.Cart = resCart
+		resOrder.Payment = resPayment
+	}
+
+	if resOrder == (model.Order{}) {
+		w.logger.Warn().
+				Ctx(ctx).
+				Str("func","GetOrderService").
+				Err(err).Send()
+		return nil, erro.ErrNotFound
+	}
+		
+	return &resOrder, nil
+}
+
+// About get an order, cart, cart item and products
 func (w *WorkerRepository) GetOrder(ctx context.Context,
 									order *model.Order) (*model.Order, error){
 	// trace
@@ -135,6 +243,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).
+				Str("func","GetOrder").
 				Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
@@ -147,6 +256,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 						o.currency,
 						o.amount,
 						o.address,
+						o.user_id,
 						o.created_at,
 						o.updated_at,
 						ca.id,
@@ -159,7 +269,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 						ca_it.discount,
 						ca_it.price,
 						ca_it.created_at,
-						ca_it.updated_at						
+						ca_it.updated_at,
+						p.Sku						
 				from public.order o,
 					cart ca,
 					cart_item ca_it,
@@ -175,6 +286,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).
+				Str("func","GetOrder").
 				Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
@@ -183,6 +295,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
     if err := rows.Err(); err != nil {
 		w.logger.Error().
 				Ctx(ctx).
+				Str("func","GetOrder").
 				Err(err).Msg("fatal error closing rows")
         return nil, errors.New(err.Error())
     }
@@ -191,7 +304,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	resCart := model.Cart{}
 	resCartItem := model.CartItem{}
 	listCartItem := []model.CartItem{}
-	//resPayment := model.Payment{}
+	resProduct := model.Product{}
 
 	var nullOrderUpdatedAt sql.NullTime
 	var nullCartUpdatedAt sql.NullTime
@@ -205,6 +318,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 							&resOrder.Currency, 
 							&resOrder.Amount,
 							&resOrder.Address,
+							&resOrder.User,
 							&resOrder.CreatedAt,
 							&nullOrderUpdatedAt,
 
@@ -221,10 +335,12 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 							&resCartItem.CreatedAt,
 							&nullCartItemUpdatedAt,
 							
+							&resProduct.Sku,
 						)
 		if err != nil {
 			w.logger.Error().
 					Ctx(ctx).
+					Str("func","GetOrder").
 					Err(err).Send()
 			return nil, errors.New(err.Error())
         }
@@ -247,7 +363,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 			resOrder.UpdatedAt = nil
 		}
 
-		listCartItem = append(listCartItem, resCartItem) 
+		resCartItem.Product = resProduct
+		listCartItem = append(listCartItem, resCartItem)
 		resCart.CartItem = &listCartItem
 		resOrder.Cart = resCart
 	}
@@ -255,9 +372,53 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	if resOrder == (model.Order{}) {
 		w.logger.Warn().
 				Ctx(ctx).
+				Str("func","GetOrder").
 				Err(err).Send()
 		return nil, erro.ErrNotFound
 	}
 		
 	return &resOrder, nil
+}
+
+// About update an order
+func (w* WorkerRepository) UpdateOrder(ctx context.Context, 
+										tx pgx.Tx, 
+										order *model.Order) (int64, error){
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateOrder")
+	defer span.End()
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","UpdateOrder").Send()
+
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","UpdateOrder").
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Query Execute
+	query := `UPDATE public.order
+				SET status = $2,
+					updated_at = $3
+				WHERE id = $1`
+
+	row, err := tx.Exec(ctx, 
+						query,	
+						order.ID,			
+						order.Status,
+						order.UpdatedAt)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","UpdateOrder").
+				Err(err).Send()
+		return 0, errors.New(err.Error())
+	}
+	return row.RowsAffected(), nil
 }

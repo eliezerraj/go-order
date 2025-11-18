@@ -95,14 +95,14 @@ type Order struct {
 	ID				int			`json:"id,omitempty"`
 	Transaction 	string		`json:"transaction_id,omitempty"`	
 	Status			string 		`json:"status,omitempty"`
-	Cart			Cart		`json:"cart,omitempty"`
 	Currency		string 		`json:"currency,omitempty"`
 	Amount			float64 	`json:"amount,omitempty"`	
-	Payment			Payment		`json:"payment,omitempty"`
 	Address		 	string		`json:"address,omitempty"`
 	User			string		`json:"user_id,omitempty"`
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`
+	Cart			Cart		`json:"cart,omitempty"`
+	Payment			Payment		`json:"payment,omitempty"`
 	StepProcess		*[]StepProcess `json:step_process,omitempty"`	
 }
 
