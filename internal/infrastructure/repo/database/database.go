@@ -86,20 +86,18 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 	// Query Execute
 	query := `INSERT INTO public.order (transaction_id,
 										fk_cart_id,
-										fk_clearance_id,
 										user_id,
 										status,
 										currency,
 										amount,
 										address,
 										created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,			
 						order.Transaction,
 						order.Cart.ID,
-						order.Payment.ID,
 						order.User,
 						order.Status,
 						order.Currency,
@@ -152,7 +150,6 @@ func (w *WorkerRepository) GetOrderService(ctx context.Context,
 						o.address,
 						o.user_id,
 						o.fk_cart_id,
-						o.fk_clearance_id,
 						o.created_at,
 						o.updated_at
 				from public.order o
@@ -180,7 +177,7 @@ func (w *WorkerRepository) GetOrderService(ctx context.Context,
 
 	resOrder := model.Order{}
 	resCart := model.Cart{}
-	resPayment := model.Payment{}
+	//resPayment := model.Payment{}
 
 	var nullOrderUpdatedAt sql.NullTime
 
@@ -194,7 +191,6 @@ func (w *WorkerRepository) GetOrderService(ctx context.Context,
 							&resOrder.Address,
 							&resOrder.User,
 							&resCart.ID,
-							&resPayment.ID,
 							&resOrder.CreatedAt,
 							&nullOrderUpdatedAt,
 						)
@@ -213,14 +209,15 @@ func (w *WorkerRepository) GetOrderService(ctx context.Context,
 		}
 
 		resOrder.Cart = resCart
-		resOrder.Payment = resPayment
+		//resOrder.Payment = &resPayment
 	}
 
 	if resOrder == (model.Order{}) {
 		w.logger.Warn().
 				Ctx(ctx).
 				Str("func","GetOrderService").
-				Err(err).Send()
+				Err(erro.ErrNotFound).
+				Interface("order.ID",order.ID).Send()
 		return nil, erro.ErrNotFound
 	}
 		
@@ -373,7 +370,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 		w.logger.Warn().
 				Ctx(ctx).
 				Str("func","GetOrder").
-				Err(err).Send()
+				Err(erro.ErrNotFound).
+				Interface("order.ID",order.ID).Send()
 		return nil, erro.ErrNotFound
 	}
 		

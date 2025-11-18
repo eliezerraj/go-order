@@ -44,7 +44,6 @@ type Server struct {
 type Endpoint struct {
 	Name			string `json:"name_service"`
 	Url				string `json:"url"`
-	Method			string `json:"method"`
 	XApigwApiId		string `json:"x-apigw-api-id,omitempty"`
 	HostName		string `json:"host_name"`
 	HttpTimeout		time.Duration `json:"httpTimeout"`
@@ -55,13 +54,25 @@ type Product struct {
 	Sku			string		`json:"sku,omitempty"`
 	Type		string 		`json:"type,omitempty"`
 	Name		string 		`json:"name,omitempty"`
+	Status		string 		`json:"status,omitempty"`
 	CreatedAt	time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`	
+}
+
+type Inventory struct {
+	ID				int		`json:"id,omitempty"`
+	Product 		Product	 `json:"product"`
+	Available		int		`json:"available,omitempty"`
+	Reserved		int		`json:"reserved,omitempty"`
+	Sold			int		`json:"sold,omitempty"` 	
+	CreatedAt		time.Time 	`json:"created_at,omitempty"`
+	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`	
 }
 
 type Cart struct {
 	ID				int			`json:"id,omitempty"`
 	UserId			string		`json:"user_id,omitempty"`
+	Status			string		`json:"status,omitempty"`
 	CartItem 		*[]CartItem	`json:"cart_item,omitempty"` 	
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`	
@@ -102,7 +113,7 @@ type Order struct {
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"update_at,omitempty"`
 	Cart			Cart		`json:"cart,omitempty"`
-	Payment			Payment		`json:"payment,omitempty"`
+	Payment			*[]Payment	`json:"payment,omitempty"`
 	StepProcess		*[]StepProcess `json:step_process,omitempty"`	
 }
 
