@@ -12,17 +12,13 @@ import(
 	"github.com/rs/zerolog"
 	"github.com/gorilla/mux"
 
-	go_core_midleware "github.com/eliezerraj/go-core/middleware"
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 
 	"github.com/go-order/internal/domain/model"
 	app_http_routers "github.com/go-order/internal/infrastructure/adapter/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-)
-
-var(
-	go_core_middleware go_core_midleware.ToolsMiddleware
 )
 
 type HttpAppServer struct {
@@ -53,8 +49,10 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 			Str("func","StartHttpAppServer").Send()
 
 	appRouter := mux.NewRouter().StrictSlash(true)
-	appRouter.Use(go_core_middleware.MiddleWareHandlerHeader)
-
+	// creata a middleware component
+	appMiddleWare := go_core_midleware.NewMiddleWare(h.logger)		
+	appRouter.Use(appMiddleWare.MiddleWareHandlerHeader)
+	
 	appRouter.Handle("/metrics", promhttp.Handler())
 
 	health := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
@@ -74,19 +72,19 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 	info.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	add := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	add.HandleFunc("/order", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.AddOrder))		
+	add.HandleFunc("/order", appMiddleWare.MiddleWareErrorHandler(appHttpRouters.AddOrder))		
 	add.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	get := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	get.HandleFunc("/order/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetOrder))		
+	get.HandleFunc("/order/{id}",appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetOrder))		
 	get.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	getOrderService := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-	getOrderService.HandleFunc("/service/order/{id}",go_core_middleware.MiddleWareErrorHandler(appHttpRouters.GetOrderService))		
+	getOrderService.HandleFunc("/service/order/{id}",appMiddleWare.MiddleWareErrorHandler(appHttpRouters.GetOrderService))		
 	getOrderService.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	checkout := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	checkout.HandleFunc("/checkout", go_core_middleware.MiddleWareErrorHandler(appHttpRouters.Checkout))		
+	checkout.HandleFunc("/checkout", appMiddleWare.MiddleWareErrorHandler(appHttpRouters.Checkout))		
 	checkout.Use(otelmux.Middleware(h.appServer.Application.Name))
 
 	// -------   Server Http 

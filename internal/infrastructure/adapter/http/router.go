@@ -17,13 +17,14 @@ import (
 	"github.com/go-order/internal/domain/model"
 	"github.com/go-order/internal/domain/service"
 
-	go_core_json "github.com/eliezerraj/go-core/coreJson"
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 	go_core_otel_trace "github.com/eliezerraj/go-core/otel/trace"
 )
 
 var (
-	coreJson 		go_core_json.CoreJson
-	coreApiError 	go_core_json.APIError
+	coreMiddleWareApiError	go_core_midleware.APIError
+	coreMiddleWareWriteJSON	go_core_midleware.MiddleWare
+
 	tracerProvider go_core_otel_trace.TracerProvider
 )
 
@@ -58,7 +59,7 @@ func NewHttpRouters(appServer *model.AppServer,
 }
 
 // About handle error
-func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_json.APIError {
+func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_midleware.APIError {
 
 	var httpStatusCode int = http.StatusInternalServerError
 
@@ -79,9 +80,11 @@ func (h *HttpRouters) ErrorHandler(trace_id string, err error) *go_core_json.API
    		httpStatusCode = http.StatusBadRequest
 	}
 
-	coreApiError = coreApiError.NewAPIError(err, trace_id, httpStatusCode)
+	coreMiddleWareApiError = coreMiddleWareApiError.NewAPIError(err, 
+																trace_id, 
+																httpStatusCode)
 
-	return &coreApiError
+	return &coreMiddleWareApiError
 }
 
 // About return a health
@@ -166,7 +169,7 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
 
 // About get order service
@@ -201,7 +204,7 @@ func (h *HttpRouters) GetOrderService(rw http.ResponseWriter, req *http.Request)
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
 
 // About get order
@@ -236,7 +239,7 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
 
 // About add order
@@ -268,5 +271,5 @@ func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error 
 		return h.ErrorHandler(trace_id, err)
 	}
 	
-	return coreJson.WriteJSON(rw, http.StatusOK, res)
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
 }
