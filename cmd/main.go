@@ -26,6 +26,7 @@ import(
 	"go.opentelemetry.io/otel/propagation"
 )
 
+// Global variables
 var ( 
 	appLogger 	zerolog.Logger
 	logger		zerolog.Logger
@@ -100,10 +101,11 @@ func init(){
 // About main
 func main (){
 	logger.Info().
-			Str("func","main").Send()
+			Msgf("STARTING APP version: %s",appServer.Application.Version)
 	logger.Info().
 			Interface("appServer", appServer).Send()
 
+	// create context and otel log provider
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var tracerProvider *sdktrace.TracerProvider
@@ -124,7 +126,7 @@ func main (){
 		tracer = tracerProvider.Tracer(appServer.Application.Name)
 	}
 
-	// Open Database
+	// Open prepare database
 	count := 1
 	var err error
 	for {
@@ -146,26 +148,6 @@ func main (){
 		}
 		break
 	}
-
-	// Cancel everything
-	defer func() {
-
-		if tracerProvider != nil {
-			err := tracerProvider.Shutdown(ctx)
-			if err != nil{
-				logger.Error().
-						Err(err).
-						Msg("Erro to shutdown tracer provider")
-			}
-		}
-		
-		appDatabasePGServer.CloseConnection()
-		cancel()
-
-		logger.Info().
-				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
-
-	}()
 
 	// wire
 	repository := database.NewWorkerRepository(&appDatabasePGServer,
@@ -191,6 +173,28 @@ func main (){
 		logger.Info().
 					Msg("SERVICES HEALTH CHECK OK")
 	}
+
+	// Cancel everything
+	defer func() {
+		// cancel log provider
+		if tracerProvider != nil {
+			err := tracerProvider.Shutdown(ctx)
+			if err != nil{
+				logger.Error().
+						Err(err).
+						Msg("Erro to shutdown tracer provider")
+			}
+		}
+	
+		// cancel database	
+		appDatabasePGServer.CloseConnection()
+
+		// cancel context		
+		cancel()
+
+		logger.Info().
+				Msgf("App %s Finalized SUCCESSFULL !!!", appServer.Application.Name)
+	}()
 
 	// start http server
 	httpServer.StartHttpAppServer(ctx, 
