@@ -463,51 +463,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		"X-Request-Id": trace_id,
 	}
 	
-	// ---------------------- STEP 1 (create a clearance) ----------------------
-
-	listPayment := []model.Payment{}
-	
-	for i := range *order.Payment{
-		payment := &(*order.Payment)[i]
-		payment.Status = "PENDING"
-		payment.Order = resOrder
-		payment.Transaction = resOrder.Transaction
-
-		httpClientParameter := go_core_http.HttpClientParameter {
-			Url:	(*s.appServer.Endpoint)[3].Url + "/payment",
-			Method:	"POST",
-			Timeout: (*s.appServer.Endpoint)[3].HttpTimeout,
-			Headers: &headers,
-			Body: payment,
-		}
-
-		resPayload, err := s.doHttpCall(ctx, 
-										httpClientParameter)
-		if err != nil {
-			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
-			return nil, err
-		}
-
-		jsonString, err  := json.Marshal(resPayload)
-		if err != nil {
-			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
-			return nil, errors.New(err.Error())
-		}
-		var resPayment model.Payment
-		json.Unmarshal(jsonString, &resPayment)
-
-		resPayment.Order = nil // clean the order indo in order to avoid (cycle info)
-		listPayment = append(listPayment, resPayment)
-	}
-
-	registerOrchestrationProcess("PAYMENT:SENDED", &listStepProcess)
 
 	// ---------------------- STEP 2 (get cart) --------------------------
-
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/" , resOrder.Cart.ID ),
 		Method:	"GET",
@@ -537,7 +494,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	resOrder.Cart = cart
 
 	// ---------------------- STEP 3 (update inventory - reserved) --------------------------
-	
 	for i := range *cart.CartItem{
 		cartItem := &(*cart.CartItem)[i]
 
@@ -586,18 +542,46 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	registerOrchestrationProcess("CART_ITEM:RESERVED:PRODUCT", &listStepProcess)
 	
 	// ---------------------- STEP 4 (update cart -from BASKET to RESERVED ) --------------------------
-
-		resOrder.Cart.Status = "RESERVED"
-		httpClientParameter = go_core_http.HttpClientParameter {
+	resOrder.Cart.Status = "RESERVED"
+	httpClientParameter = go_core_http.HttpClientParameter {
 			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/", resOrder.Cart.ID),
 			Method:	"PUT",
 			Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
 			Headers: &headers,
 			Body: resOrder.Cart,
+	}
+
+	_, err = s.doHttpCall(ctx, 
+						  httpClientParameter)
+	if err != nil {
+		s.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return nil, err
+	}
+
+	registerOrchestrationProcess("CART_ITEM:RESERVED", &listStepProcess)
+
+	// ---------------------- STEP 1 (create a clearance) ----------------------
+
+	listPayment := []model.Payment{}
+	
+	for i := range *order.Payment{
+		payment := &(*order.Payment)[i]
+		payment.Status = "PENDING"
+		payment.Order = resOrder
+		payment.Transaction = resOrder.Transaction
+
+		httpClientParameter := go_core_http.HttpClientParameter {
+			Url:	(*s.appServer.Endpoint)[3].Url + "/payment",
+			Method:	"POST",
+			Timeout: (*s.appServer.Endpoint)[3].HttpTimeout,
+			Headers: &headers,
+			Body: payment,
 		}
 
-		_, err = s.doHttpCall(ctx, 
-							httpClientParameter)
+		resPayload, err := s.doHttpCall(ctx, 
+										httpClientParameter)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -605,7 +589,21 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			return nil, err
 		}
 
-		registerOrchestrationProcess("CART_ITEM:RESERVED", &listStepProcess)
+		jsonString, err  := json.Marshal(resPayload)
+		if err != nil {
+			s.logger.Error().
+					Ctx(ctx).
+					Err(err).Send()
+			return nil, errors.New(err.Error())
+		}
+		var resPayment model.Payment
+		json.Unmarshal(jsonString, &resPayment)
+
+		resPayment.Order = nil // clean the order indo in order to avoid (cycle info)
+		listPayment = append(listPayment, resPayment)
+	}
+
+	registerOrchestrationProcess("PAYMENT:SENDED", &listStepProcess)
 
 	// --------------- update order status --------------------
 

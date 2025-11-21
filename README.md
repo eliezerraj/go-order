@@ -9,7 +9,7 @@
         transaction_id	VARCHAR(100) 	NULL,
         fk_cart_id 		BIGSERIAL 		NOT NULL,
         user_id 		VARCHAR(100) 	NOT NULL,    
-        status 			VARCHAR(100) 	NOT NULL, 
+        status 			VARCHAR(100) 	NOT NULL
         currency 		VARCHAR(100) 	NOT NULL,
         amount 			DECIMAL(10,2) 	NOT null DEFAULT 0,
         address			VARCHAR(200) 	NULL,
