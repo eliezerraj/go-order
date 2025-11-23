@@ -92,6 +92,7 @@ func registerOrchestrationProcess(nameStepProcess string,
 // About database stats
 func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","Stat").Send()
 
 	return s.workerRepository.Stat(ctx)
@@ -100,24 +101,36 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 // About check health service
 func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").Send()
 
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.HealthCheck")
+	defer span.End()
+
 	// Check database health
+	_, spanDB := tracerProvider.SpanCtx(ctx, "DatabasePG.Ping")
 	err := s.workerRepository.DatabasePG.Ping()
 	if err != nil {
 		s.logger.Error().
-				Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
+				Ctx(ctx).
+				Err(err).
+				Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
+	spanDB.End()
 
 	s.logger.Info().
+			Ctx(ctx).
 			Str("func","HealthCheck").
 			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 	
+	// ----------------------------------------------------------		
 	// check service/dependencies 
 	headers := map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",
 	}
+
+	ctxService00, spanService00 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[0].HostName )
 
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	(*s.appServer.Endpoint)[0].Url + "/health",
@@ -126,22 +139,27 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 		Headers: &headers,
 	}
 
-	// ----------------------------------------------------------
 	// call a service via http
-	_, err = s.doHttpCall(ctx, 
+	_, err = s.doHttpCall(ctxService00, 
 						   httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
+				Ctx(ctxService00).
 				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[0].HostName )
+		spanService00.End()		
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
+			Ctx(ctxService00).
 			Str("func","HealthCheck").
 			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[0].HostName )
 
+	spanService00.End()
+
 	// ----------------------------------------------------------
 	// call a service via http
+	ctxService01, spanService01 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[1].HostName )
+
 	httpClientParameter = go_core_http.HttpClientParameter {
 		Url:	(*s.appServer.Endpoint)[1].Url + "/health",
 		Method:	"GET",
@@ -150,40 +168,49 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	}
 
 	// call a service via http
-	_, err = s.doHttpCall(ctx, 
+	_, err = s.doHttpCall(ctxService01, 
 						   httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
+				Ctx(ctxService01).
 				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[1].HostName )
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
+			Ctx(ctxService01).
 			Str("func","HealthCheck").
 			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[1].HostName )
 
+	spanService01.End()
+	
 	// ----------------------------------------------------------
 	// call a service via http
+	ctxService02, spanService02 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[2].HostName )
+
 	httpClientParameter = go_core_http.HttpClientParameter {
-		Url:	(*s.appServer.Endpoint)[3].Url + "/health",
+		Url:	(*s.appServer.Endpoint)[2].Url + "/health",
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[3].HttpTimeout,
+		Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	_, err = s.doHttpCall(ctx, 
+	_, err = s.doHttpCall(ctxService02, 
 						   httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[3].HostName )
+				Ctx(ctxService02).
+				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[2].HostName )
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
+			Ctx(ctxService02).
 			Str("func","HealthCheck").
-			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[3].HostName )
+			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[2].HostName )
 
+	spanService02.End()
+
+	// final
 	return nil
 }
 
@@ -271,9 +298,9 @@ func (s * WorkerService) GetOrderService(	ctx context.Context,
 	// ---------------------- STEP 2 (get payment) --------------------------
 
 	httpClientParameter = go_core_http.HttpClientParameter {
-		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[3].Url , "/payment/order/" , resOrder.ID ),
+		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[2].Url , "/payment/order/" , resOrder.ID ),
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[3].HttpTimeout,
+		Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -560,7 +587,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, err
 	}
 
-	registerOrchestrationProcess("CART_ITEM:RESERVED", &listStepProcess)
+	registerOrchestrationProcess("CART:RESERVED", &listStepProcess)
 
 	// ---------------------- STEP 1 (create a clearance) ----------------------
 
@@ -573,9 +600,9 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		payment.Transaction = resOrder.Transaction
 
 		httpClientParameter := go_core_http.HttpClientParameter {
-			Url:	(*s.appServer.Endpoint)[3].Url + "/payment",
+			Url:	(*s.appServer.Endpoint)[2].Url + "/payment",
 			Method:	"POST",
-			Timeout: (*s.appServer.Endpoint)[3].HttpTimeout,
+			Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
 			Headers: &headers,
 			Body: payment,
 		}
@@ -606,7 +633,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	registerOrchestrationProcess("PAYMENT:SENDED", &listStepProcess)
 
 	// --------------- update order status --------------------
-
 	resOrder.Status = "ORDER-PREAPPROVED:WAITING CLEARANCE"
 	now := time.Now()
 	resOrder.UpdatedAt = &now
