@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "RepositoryName",
+    "ParameterValue": "go-order"
+  },
+  {
+    "ParameterKey": "Namespace",
+    "ParameterValue": "test-a"
+  },
+  {
+    "ParameterKey": "ClusterName",
+    "ParameterValue": "arch-eks-01-02"
+  },
+  {
+    "ParameterKey": "ServiceAccountName",
+    "ParameterValue": "sa-go-order"
+  },
+  {
+    "ParameterKey": "RoleName",
+    "ParameterValue": "GoOrder"
+  }
+]
