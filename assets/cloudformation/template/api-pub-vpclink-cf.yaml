@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform:
 - AWS::Serverless-2016-10-31
-Description: Apigateway Public VPCLink2 Integration v3.3 (Authorizaer Cross Account)- 28/11/2025
+Description: Apigateway Public VPCLink2 Integration v3.3 (Authorizer Same Account)- 28/11/2025
 
 Parameters:
   Versao:
@@ -16,7 +16,7 @@ Parameters:
       - prd
   VpcLinkIdEks01:
     Type: String
-    Default: qarnsq
+    Default: tos6v3
   PublicApiLogFormat:
     Type: String
     Default: '{"apiId": "$context.apiId", "requestId": "$context.requestId",
@@ -28,14 +28,14 @@ Parameters:
       "authLatency": "$context.authorizer.latency","x_amzn_trace_id": "$context.xrayTraceId"}'
   ApiPublicName:
     Type: String
-    Default: go-clearance-pub
+    Default: go-order-pub
   ApiPublicLogGroupName:
     Type: String
     Description: Name of API Gateway Log Group
-    Default: /dock/apigateway/go-clearance
+    Default: /dock/apigateway/go-order
   ApiGatewayDomainName:
     Type: String
-    Default: go-api-clearance.architecturedev.caradhras.io
+    Default: go-api-order.architecture.caradhras.io
   AuthorizerUri:
     Type: String
     Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live/invocations
@@ -44,31 +44,31 @@ Parameters:
     Default: arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live
   EdgeCertificateArn:
     Type: String
-    Default: arn:aws:acm:us-east-1:992382474575:certificate/e88a6b0b-f7b6-401b-b9ef-c160b1ab03c2
+    Default: arn:aws:acm:us-east-1:908671954593:certificate/6dfea057-7ca7-41b9-95a0-b63aaa6640a2 
   RegionalCertificateArn:
     Type: String
-    Default: arn:aws:acm:us-east-2:992382474575:certificate/6be53392-cd0e-46b2-98e9-d0d037abc90c
+    Default: arn:aws:acm:us-east-2:908671954593:certificate/a784955c-9a8b-4403-bea2-527035ab3782
   WafaclArn:
     Type: String
     Description: Association WAF in API ApiGateway
-    Default: arn:aws:wafv2:us-east-2:992382474575:regional/webacl/FMManagedWebACLV2-acl-basic-1707615568671/e379af00-7aa0-48a9-a100-464c5a4f5873
+    Default: arn:aws:wafv2:us-east-2:908671954593:regional/webacl/FMManagedWebACLV2-acl-basic-1663942040591/0c9a45b3-1c87-4cd9-86a9-e50fb1914e53
   Application:
     Type: String
-    Default: go-clearance
+    Default: go-order
   Owner:
     Type: String
     Default: architecture
   Service:
     Type: String
-    Default: go-clearance
+    Default: go-order
   Squad:
     Type: String
     Default: architecture
 
 Mappings:
   ApigwMap:
-    Clearance:
-      EndpointURL: go-clearance.architecturedev.caradhras.io
+    Order:
+      EndpointURL: go-order.architecture.caradhras.io
 
 Resources:
   ApiPublicLogGroup:
@@ -99,7 +99,7 @@ Resources:
         Value:
           Fn::Sub: ${AWS::StackName}
   
-  ApiPublicGoClearanceGateway:
+  ApiPublicGoOrderGateway:
     Type: AWS::Serverless::Api
     Properties:
       BinaryMediaTypes:
@@ -115,10 +115,10 @@ Resources:
       DefinitionBody:
         swagger: '2.0'
         info:
-          title: go-clearance
+          title: go-order
         tags:
-        - name: go-clearance
-          description: go-clearance
+        - name: go-order
+          description: go-order
         schemes:
         - https
         paths:
@@ -136,11 +136,11 @@ Resources:
                 httpMethod: GET
                 connectionType: VPC_LINK
                 connectionId: !Ref VpcLinkIdEks01
-                integrationTarget: "arn:aws:elasticloadbalancing:us-east-2:992382474575:loadbalancer/app/k8s-testa-albarche-2e5ca49df0/ec0ab7280b7a6081"              
+                integrationTarget: "arn:aws:elasticloadbalancing:us-east-2:908671954593:loadbalancer/net/arch-eks-01-02-nginx-ingress/82dc1acdbdd973e4"              
                 uri: 
                   Fn::Sub:
                   - 'https://${EksDomainName}/{proxy}'
-                  - EksDomainName: !FindInMap [ApigwMap, Clearance, EndpointURL]
+                  - EksDomainName: !FindInMap [ApigwMap, Order, EndpointURL]
                 passthroughBehavior: WHEN_NO_TEMPLATES
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
@@ -165,11 +165,40 @@ Resources:
                 httpMethod: POST
                 connectionType: VPC_LINK
                 connectionId: !Ref VpcLinkIdEks01
-                integrationTarget: "arn:aws:elasticloadbalancing:us-east-2:992382474575:loadbalancer/app/k8s-testa-albarche-2e5ca49df0/ec0ab7280b7a6081"           
+                integrationTarget: "arn:aws:elasticloadbalancing:us-east-2:908671954593:loadbalancer/net/arch-eks-01-02-nginx-ingress/82dc1acdbdd973e4"           
                 uri: 
                   Fn::Sub:
                   - 'https://${EksDomainName}/{proxy}'
-                  - EksDomainName: !FindInMap [ApigwMap, Clearance, EndpointURL]
+                  - EksDomainName: !FindInMap [ApigwMap, Order, EndpointURL]
+                passthroughBehavior: WHEN_NO_TEMPLATES 
+                requestParameters:
+                  integration.request.path.proxy: method.request.path.proxy
+                  integration.request.header.X-Request-ID: context.requestId
+                  integration.request.header.client-id: context.authorizer.tenant_id
+                  integration.request.header.X-Forwarded-For: context.identity.sourceIp
+                  integration.request.header.jwt-id: context.authorizer.jwt_id   
+              security:
+              - authorizer: []
+            put:
+              consumes:
+              - application/json
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: 200 response
+                  schema:
+                    $ref: '#/definitions/Empty'
+              x-amazon-apigateway-integration:
+                type: http_proxy
+                httpMethod: PUT
+                connectionType: VPC_LINK
+                connectionId: !Ref VpcLinkIdEks01
+                integrationTarget: "arn:aws:elasticloadbalancing:us-east-2:908671954593:loadbalancer/net/arch-eks-01-02-nginx-ingress/82dc1acdbdd973e4"           
+                uri: 
+                  Fn::Sub:
+                  - 'https://${EksDomainName}/{proxy}'
+                  - EksDomainName: !FindInMap [ApigwMap, Order, EndpointURL]
                 passthroughBehavior: WHEN_NO_TEMPLATES 
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
@@ -226,7 +255,7 @@ Resources:
             responseTemplates:
               application/json: '{"error": { "id": "$context.requestId", "description":
                 "Too many requests", "code": "429"}}'
-      Description: API Pulic Lambda Integration
+      Description: API Public Lambda Integration
       DisableExecuteApiEndpoint: true
       EndpointConfiguration:
         Type: EDGE
@@ -274,29 +303,29 @@ Resources:
       DomainName:
         Ref: ApiGatewayDomainName
       RestApiId:
-        Ref: ApiPublicGoClearanceGateway
+        Ref: ApiPublicGoOrderGateway
       Stage:
-        Ref: ApiPublicGoClearanceGateway.Stage
+        Ref: ApiPublicGoOrderGateway.Stage
 
 # Able the lines below if the Authorizer Lambda is in the same account as the API Gateway
-#  ApiInvokePermission:
-#    Type: 'AWS::Lambda::Permission'
-#    Properties:
-#      FunctionName: !Ref AuthorizerARN
-#      Action: lambda:InvokeFunction
-#      Principal: apigateway.amazonaws.com
+  ApiInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref AuthorizerARN
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
 
   WafAssociation:
     Type: AWS::WAFv2::WebACLAssociation
     Properties:
       ResourceArn:
-        Fn::Sub: arn:aws:apigateway:${AWS::Region}::/restapis/${ApiPublicGoClearanceGateway}/stages/${ApiPublicGoClearanceGateway.Stage}
+        Fn::Sub: arn:aws:apigateway:${AWS::Region}::/restapis/${ApiPublicGoOrderGateway}/stages/${ApiPublicGoOrderGateway.Stage}
       WebACLArn:
         Ref: WafaclArn
 
 Outputs:
-  ApiPublicGoClearanceGateway:
+  ApiPublicGoOrderGateway:
     Value:
-      Ref: ApiPublicGoClearanceGateway
+      Ref: ApiPublicGoOrderGateway
     Export:
-      Name: ApiPublicGoClearanceGateway
+      Name: ApiPublicGoOrderGateway
