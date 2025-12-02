@@ -167,41 +167,6 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 }
 
 // About get order service
-func (h *HttpRouters) GetOrderService(rw http.ResponseWriter, req *http.Request) error {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrderService")
-	defer span.End()
-
-	// log with context
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","GetOrderService").Send()
-
-	vars := mux.Vars(req)
-	varID := vars["id"]
-
-	varIDint, err := strconv.Atoi(varID)
-    if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
-		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
-    }
-
-	order := model.Order{ID: varIDint}
-
-	res, err := h.workerService.GetOrderService(ctx, &order)
-	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
-		return h.ErrorHandler(trace_id, err)
-	}
-	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
-}
-
-// About get order
 func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error {
 	// extract context		
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
@@ -228,6 +193,41 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 	order := model.Order{ID: varIDint}
 
 	res, err := h.workerService.GetOrder(ctx, &order)
+	if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get order
+func (h *HttpRouters) GetOrderV1(rw http.ResponseWriter, req *http.Request) error {
+	// extract context		
+	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+    defer cancel()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrderV1")
+	defer span.End()
+
+	// log with context
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func","GetOrderV1").Send()
+
+	vars := mux.Vars(req)
+	varID := vars["id"]
+
+	varIDint, err := strconv.Atoi(varID)
+    if err != nil {
+		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+    }
+
+	order := model.Order{ID: varIDint}
+
+	res, err := h.workerService.GetOrderV1(ctx, &order)
 	if err != nil {
 		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 		return h.ErrorHandler(trace_id, err)
