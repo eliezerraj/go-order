@@ -121,7 +121,7 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 }
 
 // About get an order
-func (w *WorkerRepository) GetOrderService(ctx context.Context,
+func (w *WorkerRepository) GetOrder(ctx context.Context,
 											order *model.Order) (*model.Order, error){
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrderService")
@@ -226,7 +226,7 @@ func (w *WorkerRepository) GetOrderService(ctx context.Context,
 }
 
 // About get an order, cart, cart item and products
-func (w *WorkerRepository) GetOrder(ctx context.Context,
+func (w *WorkerRepository) GetOrderV1(ctx context.Context,
 									order *model.Order) (*model.Order, error){
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrder")
@@ -270,9 +270,9 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 						ca_it.updated_at,
 						p.Sku						
 				from public.order o,
-					cart ca,
-					cart_item ca_it,
-					product p
+					 cart ca,
+					 cart_item ca_it,
+					 product p
 				where ca.id = o.fk_cart_id
 				and ca.id = ca_it.fk_cart_id
 				and p.id = ca_it.fk_product_id

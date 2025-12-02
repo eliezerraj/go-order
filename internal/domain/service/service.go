@@ -227,9 +227,32 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 }
 
 // About get order
-func (s * WorkerService) GetOrder(	ctx context.Context, 
-									order *model.Order) (*model.Order, error){
+func (s * WorkerService) GetOrderV1(ctx context.Context, 
+								  order *model.Order) (*model.Order, error){
 	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1")
+	defer span.End()
+
+	s.logger.Info().
+			Ctx(ctx).
+			Str("func","GetOrderV1").Send()
+
+	// Call a service
+	resOrder, err := s.workerRepository.GetOrderV1(ctx, order)
+	if err != nil {
+		s.logger.Error().
+				Ctx(ctx).
+				Err(err).Send()
+		return nil, err
+	}
+								
+	return resOrder, nil
+}
+
+// About get order and complete cart via service
+func (s * WorkerService) GetOrder(ctx context.Context, 
+								  order *model.Order) (*model.Order, error){
+	// trace and log
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrder")
 	defer span.End()
 
@@ -245,35 +268,12 @@ func (s * WorkerService) GetOrder(	ctx context.Context,
 				Err(err).Send()
 		return nil, err
 	}
-								
-	return resOrder, nil
-}
-
-// About get order and complete cart via service
-func (s * WorkerService) GetOrderService(	ctx context.Context, 
-											order *model.Order) (*model.Order, error){
-	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderService")
-	defer span.End()
-
-	s.logger.Info().
-			Ctx(ctx).
-			Str("func","GetOrderService").Send()
-
-	// Call a service
-	resOrder, err := s.workerRepository.GetOrderService(ctx, order)
-	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
-		return nil, err
-	}
 			
 	// prepare headers http for calling services
 	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 
 	headers := map[string]string{
-		"Content-Type":  "application/json;charset=UTF-8",
+		"Content-Type": "application/json;charset=UTF-8",
 		"X-Request-Id": trace_id,
 	}
 
@@ -307,7 +307,6 @@ func (s * WorkerService) GetOrderService(	ctx context.Context,
 	json.Unmarshal(jsonString, &cart)
 
 	// ---------------------- STEP 2 (get payment) --------------------------
-
 	httpClientParameter = go_core_http.HttpClientParameter {
 		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[2].Url , "/payment/order/" , resOrder.ID ),
 		Method:	"GET",
@@ -340,9 +339,8 @@ func (s * WorkerService) GetOrderService(	ctx context.Context,
 	for i := range listPayment{
 		listPayment[i].Order = nil
 	}
-
+	
 	// ------------------------------------------------------
-
 	// fill response
 	resOrder.Cart = cart
 	resOrder.Payment = &listPayment
@@ -482,7 +480,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	}()
 
 	// get the order data	
-	resOrder, err := s.workerRepository.GetOrderService(ctx, order)
+	resOrder, err := s.workerRepository.GetOrder(ctx, order)
 	if err != nil {
 		s.logger.Error().
 				Ctx(ctx).
