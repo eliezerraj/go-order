@@ -198,4 +198,4 @@ jobs:
           kubectl apply --kubeconfig /home/runner/.kube/config --validate=false --validate=false --namespace=${{ needs.setup-environment.outputs.CLUSTER_NAMESPACE }} -f ${{ needs.setup-environment.outputs.KUBERNETES_MANIFEST_PATH }}/external-secret.yaml
           kubectl apply --kubeconfig /home/runner/.kube/config --validate=false --validate=false --namespace=${{ needs.setup-environment.outputs.CLUSTER_NAMESPACE }} -f ${{ needs.setup-environment.outputs.KUBERNETES_MANIFEST_PATH }}/secret-store.yaml
           kubectl apply --kubeconfig /home/runner/.kube/config --validate=false --validate=false --namespace=${{ needs.setup-environment.outputs.CLUSTER_NAMESPACE }} -f ${{ needs.setup-environment.outputs.KUBERNETES_MANIFEST_PATH }}/ing.yaml
-          kubectl rollout restart deployment/go-inventory --namespace=${{ needs.setup-environment.outputs.CLUSTER_NAMESPACE }}
+          kubectl rollout restart deployment/go-order --namespace=${{ needs.setup-environment.outputs.CLUSTER_NAMESPACE }}

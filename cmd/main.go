@@ -81,9 +81,8 @@ func init(){
 
 	// set a logger
 	logger = appLogger.With().
-						Str("package", "main").
-						Logger()
-
+					   Str("package", "main").
+					   Logger()
 
 	// load configs					
 	server 		:= config.GetHttpServerEnv()
@@ -101,6 +100,7 @@ func init(){
 func main (){
 	logger.Info().
 			Msgf("STARTING APP version: %s",appServer.Application.Version)
+
 	logger.Info().
 			Interface("appServer", appServer).Send()
 
