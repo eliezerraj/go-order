@@ -68,11 +68,23 @@ func (s *WorkerService) doHttpCall(ctx context.Context,
 					Ctx(ctx).
 					Err(erro.ErrNotFound).Send()
 			return nil, erro.ErrNotFound
-		} else {
+		} else {		
+			jsonString, err  := json.Marshal(resPayload)
+			if err != nil {
+				s.logger.Error().
+						Ctx(ctx).
+						Err(err).Send()
+				return nil, errors.New(err.Error())
+			}			
+			
+			message := model.APIError{}
+			json.Unmarshal(jsonString, &message)
+
+			newErr := errors.New(fmt.Sprintf("http call error: status code %d - message: %s", message.StatusCode ,message.Msg))
 			s.logger.Error().
 					Ctx(ctx).
-					Err(erro.ErrBadRequest).Send()
-			return nil, erro.ErrBadRequest 
+					Err(newErr).Send()
+			return nil, newErr
 		}
 	}
 
@@ -266,7 +278,6 @@ func (s * WorkerService) GetOrderService(	ctx context.Context,
 	}
 
 	// --------------- STEP 1 (get cart and cart itens details) ------------
-
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/" , resOrder.Cart.ID ),
 		Method:	"GET",
@@ -380,7 +391,6 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	}
 
 	// ---------------------- STEP 1 (post/create a cart) --------------------------
-
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	(*s.appServer.Endpoint)[0].Url + "/cart",
 		Method:	"POST",
@@ -392,6 +402,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	// call a service via http
 	resPayload, err := s.doHttpCall(ctx, 
 									httpClientParameter)
+
 	if err != nil {
 		s.logger.Error().
 				Ctx(ctx).
@@ -490,7 +501,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		"X-Request-Id": trace_id,
 	}
 	
-
 	// ---------------------- STEP 2 (get cart) --------------------------
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/" , resOrder.Cart.ID ),
@@ -590,7 +600,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	registerOrchestrationProcess("CART:RESERVED", &listStepProcess)
 
 	// ---------------------- STEP 1 (create a clearance) ----------------------
-
 	listPayment := []model.Payment{}
 	
 	for i := range *order.Payment{

@@ -18,6 +18,12 @@ type MessageRouter struct {
 	Message			string `json:"message"`
 }
 
+type APIError struct {
+	StatusCode	int    `json:"statusCode"`
+	Msg			string `json:"message"`
+	TraceId		string `json:"request-id,omitempty"`
+}
+
 type Application struct {
 	Name				string 	`json:"name"`
 	Version				string 	`json:"version"`
@@ -99,7 +105,8 @@ type Payment struct {
 	Currency	string 		`json:"currency,omitempty"`
 	Amount		float64 	`json:"amount,omitempty"`
 	CreatedAt	time.Time 	`json:"created_at,omitempty"`
-	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`	
+	UpdatedAt	*time.Time 	`json:"update_at,omitempty"`
+	StepProcess	*[]StepProcess `json:step_process,omitempty"`			
 }
 
 type Order struct {
