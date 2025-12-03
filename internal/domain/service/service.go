@@ -64,16 +64,16 @@ func (s *WorkerService) doHttpCall(ctx context.Context,
 
 	if statusCode != http.StatusOK {
 		if statusCode == http.StatusNotFound {
-			s.logger.Error().
-					Ctx(ctx).
-					Err(erro.ErrNotFound).Send()
+			s.logger.Warn().
+					 Ctx(ctx).
+					 Err(erro.ErrNotFound).Send()
 			return nil, erro.ErrNotFound
 		} else {		
 			jsonString, err  := json.Marshal(resPayload)
 			if err != nil {
 				s.logger.Error().
-						Ctx(ctx).
-						Err(err).Send()
+						 Ctx(ctx).
+						 Err(err).Send()
 				return nil, errors.New(err.Error())
 			}			
 			
@@ -82,8 +82,8 @@ func (s *WorkerService) doHttpCall(ctx context.Context,
 
 			newErr := errors.New(fmt.Sprintf("http call error: status code %d - message: %s", message.StatusCode ,message.Msg))
 			s.logger.Error().
-					Ctx(ctx).
-					Err(newErr).Send()
+					 Ctx(ctx).
+					 Err(newErr).Send()
 			return nil, newErr
 		}
 	}
@@ -124,17 +124,16 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	err := s.workerRepository.DatabasePG.Ping()
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).
-				Msg("*** Database HEALTH CHECK FAILED ***")
+				 Ctx(ctx).
+				 Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
 	spanDB.End()
 
 	s.logger.Info().
-			Ctx(ctx).
-			Str("func","HealthCheck").
-			Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
+			 Ctx(ctx).
+			 Str("func","HealthCheck").
+			 Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 	
 	// ----------------------------------------------------------		
 	// check service/dependencies 
@@ -162,9 +161,9 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			Ctx(ctxService00).
-			Str("func","HealthCheck").
-			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[0].HostName )
+			 Ctx(ctxService00).
+			 Str("func","HealthCheck").
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[0].HostName )
 
 	spanService00.End()
 
@@ -184,14 +183,14 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 						   httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctxService01).
-				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[1].HostName )
+				 Ctx(ctxService01).
+				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[1].HostName )
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			Ctx(ctxService01).
-			Str("func","HealthCheck").
-			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[1].HostName )
+			 Ctx(ctxService01).
+			 Str("func","HealthCheck").
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[1].HostName )
 
 	spanService01.End()
 	
@@ -211,14 +210,14 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 						   httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctxService02).
-				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[2].HostName )
+				 Ctx(ctxService02).
+				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[2].HostName )
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			Ctx(ctxService02).
-			Str("func","HealthCheck").
-			Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[2].HostName )
+			 Ctx(ctxService02).
+			 Str("func","HealthCheck").
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[2].HostName )
 
 	spanService02.End()
 
@@ -228,7 +227,7 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 
 // About get order
 func (s * WorkerService) GetOrderV1(ctx context.Context, 
-								  order *model.Order) (*model.Order, error){
+								    order *model.Order) (*model.Order, error){
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1")
 	defer span.End()
@@ -241,8 +240,8 @@ func (s * WorkerService) GetOrderV1(ctx context.Context,
 	resOrder, err := s.workerRepository.GetOrderV1(ctx, order)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 								
@@ -257,15 +256,12 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	defer span.End()
 
 	s.logger.Info().
-			Ctx(ctx).
-			Str("func","GetOrder").Send()
+			 Ctx(ctx).
+			 Str("func","GetOrder").Send()
 
 	// Call a service
 	resOrder, err := s.workerRepository.GetOrder(ctx, order)
 	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
 		return nil, err
 	}
 			
@@ -290,8 +286,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 									httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 
@@ -299,8 +295,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	jsonString, err  := json.Marshal(resPayload)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	cart := model.Cart{}
@@ -319,8 +315,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 									httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 
@@ -328,8 +324,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	jsonString, err = json.Marshal(resPayload)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	listPayment := []model.Payment{}
@@ -354,15 +350,15 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddOrder")
 
 	s.logger.Info().
-			Ctx(ctx).
-			Str("func","AddOrder").Send()
+			 Ctx(ctx).
+			 Str("func","AddOrder").Send()
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 
@@ -405,18 +401,15 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	resPayload, err := s.doHttpCall(ctx, 
 									httpClientParameter)
 
-	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+	if err != nil {		
 		return nil, err
 	}
 
 	jsonString, err  := json.Marshal(resPayload)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	cart := model.Cart{}
@@ -441,9 +434,6 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 												tx, 
 												order)
 	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
 		return nil, err
 	}
 	order.ID = resOrder.ID
@@ -462,8 +452,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.Checkout")
 
 	s.logger.Info().
-			Ctx(ctx).
-			Str("func","Checkout").Send()
+			 Ctx(ctx).
+			 Str("func","Checkout").Send()
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
@@ -488,9 +478,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	// get the order data	
 	resOrder, err := s.workerRepository.GetOrder(ctx, order)
 	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
 		return nil, err
 	}
 
@@ -517,8 +504,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 									httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 
@@ -573,7 +560,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		}
 
 		_, err = s.doHttpCall(ctx, 
-						httpClientParameter)
+							  httpClientParameter)
+
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -599,8 +587,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 						  httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+				 Ctx(ctx).
+				 Err(err).Send()
 		return nil, err
 	}
 
@@ -613,9 +601,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	row, err := s.workerRepository.UpdateOrder(ctx, tx, resOrder)
 	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
 		return nil, err
 	}
 	if row == 0 {
@@ -647,9 +632,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		resPayload, err := s.doHttpCall(ctx, 
 										httpClientParameter)
 		if err != nil {
-			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
 			return nil, err
 		}
 
