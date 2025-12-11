@@ -36,7 +36,7 @@ data:
   CLIENT_HTTP_TIMEOUT_00: "5"
 
   NAME_SERVICE_01: "go-inventory"
-  URL_SERVICE_01: "https://go-inventory.architecture.caradhras.io/"
+  URL_SERVICE_01: "https://go-inventory.architecture.caradhras.io"
   HOST_SERVICE_01: "go-inventory"
   CLIENT_HTTP_TIMEOUT_01: "5"
 
