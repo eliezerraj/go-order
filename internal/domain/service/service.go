@@ -52,7 +52,10 @@ func NewWorkerService(appServer	*model.AppServer,
 // about do http call 
 func (s *WorkerService) doHttpCall(ctx context.Context,
 									httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
-		
+	s.logger.Info().
+			 Ctx(ctx).
+			 Str("func","doHttpCall").Send()
+
 	resPayload, statusCode, err := s.httpService.DoHttp(ctx, 
 														httpClientParameter)
 	if err != nil {
@@ -228,13 +231,13 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 // About get order (usind join, all tables in the same database)
 func (s * WorkerService) GetOrderV1(ctx context.Context, 
 								    order *model.Order) (*model.Order, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1")
-	defer span.End()
-
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrderV1").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1")
+	defer span.End()
 
 	// Call a service
 	resOrder, err := s.workerRepository.GetOrderV1(ctx, order)
@@ -251,13 +254,13 @@ func (s * WorkerService) GetOrderV1(ctx context.Context,
 // About get order and complete cart via service
 func (s * WorkerService) GetOrder(ctx context.Context, 
 								  order *model.Order) (*model.Order, error){
-	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrder")
-	defer span.End()
-
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","GetOrder").Send()
+
+	// trace and log
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrder")
+	defer span.End()
 
 	// Call a service
 	resOrder, err := s.workerRepository.GetOrder(ctx, order)
@@ -346,12 +349,12 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 // About create a payment
 func (s *WorkerService) AddOrder(ctx context.Context, 
 								order *model.Order) (*model.Order, error){
-	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddOrder")
-
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","AddOrder").Send()
+
+	// trace and log
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddOrder")
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
@@ -447,12 +450,12 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 // checkout order
 func (s *WorkerService) Checkout(ctx context.Context, 
 								order *model.Order) (*model.Order, error){
-	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.Checkout")
-
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","Checkout").Send()
+
+	// trace and log
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.Checkout")
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
