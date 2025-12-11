@@ -63,13 +63,14 @@ func (w *WorkerRepository) Stat(ctx context.Context) (go_core_db_pg.PoolStats){
 func (w* WorkerRepository) AddOrder(ctx context.Context, 
 									tx pgx.Tx, 
 									order *model.Order) (*model.Order, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddOrder")
-	defer span.End()
 
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","AddOrder").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddOrder")
+	defer span.End()
 
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
@@ -123,13 +124,13 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 // About get an order
 func (w *WorkerRepository) GetOrder(ctx context.Context,
 											order *model.Order) (*model.Order, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrderService")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrderService").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrderService")
+	defer span.End()
 
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
@@ -228,13 +229,13 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 // About get an order, cart, cart item and products
 func (w *WorkerRepository) GetOrderV1(ctx context.Context,
 									order *model.Order) (*model.Order, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrder")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrder").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrder")
+	defer span.End()
 
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
@@ -383,13 +384,13 @@ func (w *WorkerRepository) GetOrderV1(ctx context.Context,
 func (w* WorkerRepository) UpdateOrder(ctx context.Context, 
 										tx pgx.Tx, 
 										order *model.Order) (int64, error){
-	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateOrder")
-	defer span.End()
-
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","UpdateOrder").Send()
+			
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateOrder")
+	defer span.End()
 
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {

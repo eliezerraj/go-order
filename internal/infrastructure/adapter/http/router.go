@@ -122,14 +122,14 @@ func (h *HttpRouters) Info(rw http.ResponseWriter, req *http.Request) {
 										time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Info")
-	defer span.End()
-
 	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","Info").Send()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Info")
+	defer span.End()
 
 	json.NewEncoder(rw).Encode(h.appServer)
 }
@@ -140,14 +140,14 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddOrder")
-	defer span.End()
-	
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","AddOrder").Send()
 
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.AddOrder")
+	defer span.End()
+	
 	order := model.Order{}
 	
 	err := json.NewDecoder(req.Body).Decode(&order)
@@ -172,14 +172,14 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrder")
-	defer span.End()
-
 	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrder").Send()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrder")
+	defer span.End()
 
 	vars := mux.Vars(req)
 	varID := vars["id"]
@@ -207,14 +207,14 @@ func (h *HttpRouters) GetOrderV1(rw http.ResponseWriter, req *http.Request) erro
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrderV1")
-	defer span.End()
-
 	// log with context
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrderV1").Send()
+
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.GetOrderV1")
+	defer span.End()
 
 	vars := mux.Vars(req)
 	varID := vars["id"]
@@ -242,14 +242,14 @@ func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error 
 	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
     defer cancel()
 
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Checkout")
-	defer span.End()
-	
 	h.logger.Info().
 			Ctx(ctx).
 			Str("func","Checkout").Send()
 
+	// trace	
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.http.Checkout")
+	defer span.End()
+	
 	order := model.Order{}
 	
 	err := json.NewDecoder(req.Body).Decode(&order)
