@@ -537,7 +537,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		}
 
 		_, err = s.doHttpCall(ctx, 
-							 httpClientParameter)
+							  httpClientParameter)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -545,7 +545,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			return nil, err
 		}
 
-		registerOrchestrationProcess("INVENTORY:RESERVED:SUCESSFULL", &listStepProcess)
+		registerOrchestrationProcess(fmt.Sprintf("%s%v","INVENTORY:RESERVED:SUCESSFULL:",cartItem.Product.Sku), &listStepProcess)
 
 		cartItem.Status = "CART_ITEM:RESERVED"
 
