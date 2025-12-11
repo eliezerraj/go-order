@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform:
 - AWS::Serverless-2016-10-31
-Description: Apigateway Public VPCLink2 Integration v3.3 (Authorizer Same Account)- 28/11/2025
+Description: Apigateway Public VPCLink2 Integration v3.4 (Authorizer Same Account)- 28/11/2025
 
 Parameters:
   Versao:
     Type: String
-    Default: 3.0
+    Default: 3.4
   Env:
     Type: String
     Default: dev
@@ -38,10 +38,10 @@ Parameters:
     Default: go-api-order.architecture.caradhras.io
   AuthorizerUri:
     Type: String
-    Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live/invocations
+    Default: arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:908671954593:function:lambda-go-oauth2/invocations
   AuthorizerARN:
     Type: String
-    Default: arn:aws:lambda:us-east-2:908671954593:function:go-oauth-apigw-authorizer-lambda:live
+    Default: arn:aws:lambda:us-east-2:908671954593:function:lambda-go-oauth2:live
   EdgeCertificateArn:
     Type: String
     Default: arn:aws:acm:us-east-1:908671954593:certificate/6dfea057-7ca7-41b9-95a0-b63aaa6640a2 
@@ -145,9 +145,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id  
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent
+                  integration.request.header.tracestate: context.authorizer.tracestate                             
               security:
               - authorizer: []
             post:
@@ -174,9 +175,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id   
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent  
+                  integration.request.header.tracestate: context.authorizer.tracestate   
               security:
               - authorizer: []
             put:
@@ -203,9 +205,10 @@ Resources:
                 requestParameters:
                   integration.request.path.proxy: method.request.path.proxy
                   integration.request.header.X-Request-ID: context.requestId
-                  integration.request.header.client-id: context.authorizer.tenant_id
                   integration.request.header.X-Forwarded-For: context.identity.sourceIp
-                  integration.request.header.jwt-id: context.authorizer.jwt_id   
+                  integration.request.header.jwt-id: context.authorizer.jwt_id
+                  integration.request.header.traceparent: context.authorizer.traceparent  
+                  integration.request.header.tracestate: context.authorizer.tracestate   
               security:
               - authorizer: []
         x-amazon-apigateway-api-key-source: AUTHORIZER
@@ -255,7 +258,7 @@ Resources:
             responseTemplates:
               application/json: '{"error": { "id": "$context.requestId", "description":
                 "Too many requests", "code": "429"}}'
-      Description: API Public Lambda Integration
+      Description: !Sub "Api ${ApiPublicName} service"
       DisableExecuteApiEndpoint: true
       EndpointConfiguration:
         Type: EDGE
