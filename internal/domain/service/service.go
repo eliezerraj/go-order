@@ -225,7 +225,7 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// About get order
+// About get order (usind join, all tables in the same database)
 func (s * WorkerService) GetOrderV1(ctx context.Context, 
 								    order *model.Order) (*model.Order, error){
 	// trace
@@ -385,7 +385,6 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	}
 
 	// ---------------------- STEP 1 (create a cart) --------------------------
-
 	// prepare data
 	order.Cart.Status = "CART:POSTED"
 
@@ -521,8 +520,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	resOrder.Cart = cart
 
-	// ---------------------- STEP 2 (update inventory - reserved) --------------------------
-	for i := range *cart.CartItem{
+	// ---------------------- STEP 2 (update inventory - reserved and CartItem) --------------------------
+	for i := range *cart.CartItem {
 		cartItem := &(*cart.CartItem)[i]
 
 		bodyInventory := model.Inventory { 
@@ -538,7 +537,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		}
 
 		_, err = s.doHttpCall(ctx, 
-						httpClientParameter)
+							 httpClientParameter)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -548,7 +547,6 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 		registerOrchestrationProcess("INVENTORY:RESERVED:SUCESSFULL", &listStepProcess)
 
-	// ---------------------- STEP 3 (update cart -from BASKET to RESERVED ) --------------------------
 		cartItem.Status = "CART_ITEM:RESERVED"
 
 		httpClientParameter = go_core_http.HttpClientParameter {
@@ -568,10 +566,10 @@ func (s *WorkerService) Checkout(ctx context.Context,
 					Err(err).Send()
 			return nil, err
 		}
+
+		registerOrchestrationProcess("CART_ITEM:RESERVED:SUCESSFULL", &listStepProcess)
 	}
 
-	registerOrchestrationProcess("CART_ITEM:RESERVED:SUCESSFULL", &listStepProcess)
-	
 	// ---------------------- STEP 4 (update cart -from BASKET to RESERVED ) --------------------------
 	resOrder.Cart.Status = "CART:RESERVED"
 	
