@@ -3,7 +3,7 @@ module github.com/go-order
 go 1.23.3
 
 require (
-	github.com/eliezerraj/go-core v1.0.101
+	github.com/eliezerraj/go-core v1.0.102
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.7.6

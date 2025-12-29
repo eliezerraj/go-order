@@ -269,7 +269,7 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	}
 			
 	// prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 
 	headers := map[string]string{
 		"Content-Type": "application/json;charset=UTF-8",
@@ -380,7 +380,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	listStepProcess := []model.StepProcess{}
 
 	// prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 
 	headers := map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",
@@ -487,7 +487,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	listStepProcess := []model.StepProcess{}
 
 	// 	prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 
 	headers := map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",

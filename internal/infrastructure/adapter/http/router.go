@@ -152,14 +152,14 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 	
 	err := json.NewDecoder(req.Body).Decode(&order)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
 
 	res, err := h.workerService.AddOrder(ctx, &order)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -186,7 +186,7 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 
 	varIDint, err := strconv.Atoi(varID)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 
@@ -194,7 +194,7 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 
 	res, err := h.workerService.GetOrder(ctx, &order)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -221,7 +221,7 @@ func (h *HttpRouters) GetOrderV1(rw http.ResponseWriter, req *http.Request) erro
 
 	varIDint, err := strconv.Atoi(varID)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 
@@ -229,7 +229,7 @@ func (h *HttpRouters) GetOrderV1(rw http.ResponseWriter, req *http.Request) erro
 
 	res, err := h.workerService.GetOrderV1(ctx, &order)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
@@ -254,14 +254,14 @@ func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error 
 	
 	err := json.NewDecoder(req.Body).Decode(&order)
     if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
 
 	res, err := h.workerService.Checkout(ctx, &order)
 	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
 		return h.ErrorHandler(trace_id, err)
 	}
 	
