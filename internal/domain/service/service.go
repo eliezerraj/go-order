@@ -418,7 +418,35 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	json.Unmarshal(jsonString, &cart)
 
 	registerOrchestrationProcess("CART:POSTED:SUCESSFULL", &listStepProcess)
-	
+
+	// -------------------------- UPADATE INVENTORY (PENDING) ---------------
+	for i := range *cart.CartItem {
+		cartItem := &(*cart.CartItem)[i]
+
+		bodyInventory := model.Inventory { 
+			Pending: cartItem.Quantity,
+			Available: cartItem.Quantity * -1,
+		}
+
+		httpClientParameter = go_core_http.HttpClientParameter {
+			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[1].Url , "/inventory/product/", cartItem.Product.Sku),
+			Method:	"PUT",
+			Timeout: (*s.appServer.Endpoint)[1].HttpTimeout,
+			Headers: &headers,
+			Body: bodyInventory,
+		}
+
+		_, err = s.doHttpCall(ctx, 
+							  httpClientParameter)
+		if err != nil {
+			s.logger.Error().
+					Ctx(ctx).
+					Err(err).Send()
+			return nil, err
+		}
+
+		registerOrchestrationProcess(fmt.Sprintf("%s%v","INVENTORY:PENDING:SUCESSFULL:",cartItem.Product.Sku), &listStepProcess)
+	}
 	// -------------------------- CREATE A ORDER -----------------------------
 	// prepare data
 	order.CreatedAt = time.Now()
@@ -449,7 +477,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 // checkout order
 func (s *WorkerService) Checkout(ctx context.Context, 
-								order *model.Order) (*model.Order, error){
+								 order *model.Order) (*model.Order, error){
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","Checkout").Send()
@@ -523,12 +551,18 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	resOrder.Cart = cart
 
-	// ---------------------- STEP 2 (update inventory - reserved and CartItem) --------------------------
+	// ---------------------- STEP 2 (update inventory - PENDING TO SOLD and CartItem) --------------------------
 	for i := range *cart.CartItem {
 		cartItem := &(*cart.CartItem)[i]
 
+		// If cartItem.Status is RESERVED, skip it (means already processed)
+		if cartItem.Status == "CART_ITEM:RESERVED" {
+			continue // skip already processed items
+		}
+
 		bodyInventory := model.Inventory { 
-			Reserved: cartItem.Quantity,
+			Pending: cartItem.Quantity * -1,
+			Sold: cartItem.Quantity,
 		}
 
 		httpClientParameter = go_core_http.HttpClientParameter {
