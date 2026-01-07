@@ -346,7 +346,7 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	return resOrder, nil
 }
 
-// About create a payment
+// About create a order
 func (s *WorkerService) AddOrder(ctx context.Context, 
 								order *model.Order) (*model.Order, error){
 	s.logger.Info().
@@ -389,7 +389,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 	// ---------------------- STEP 1 (create a cart) --------------------------
 	// prepare data
-	order.Cart.Status = "CART:POSTED"
+	order.Cart.Status = "CART:PENDING"
 
 	httpClientParameter := go_core_http.HttpClientParameter {
 		Url:	(*s.appServer.Endpoint)[0].Url + "/cart",
@@ -417,7 +417,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	cart := model.Cart{}
 	json.Unmarshal(jsonString, &cart)
 
-	registerOrchestrationProcess("CART:POSTED:SUCESSFULL", &listStepProcess)
+	registerOrchestrationProcess("CART:PENDING:SUCESSFULL", &listStepProcess)
 
 	// -------------------------- UPADATE INVENTORY (PENDING) ---------------
 	for i := range *cart.CartItem {
@@ -452,7 +452,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	order.CreatedAt = time.Now()
 	order.Cart = cart
 	order.Transaction = "order:" + uuid.New().String()
-	order.Status = "ORDER:POSTED"
+	order.Status = "ORDER:PENDING"
 
 	for i := range *order.Cart.CartItem { 
 		cartItem := &(*cart.CartItem)[i]
@@ -468,7 +468,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	}
 	order.ID = resOrder.ID
 
-	registerOrchestrationProcess("ORDER:POSTED:SUCESSFULL", &listStepProcess)
+	registerOrchestrationProcess("ORDER:PENDING:SUCESSFULL", &listStepProcess)
 
 	// --------------------------------------------- 
 	order.StepProcess = &listStepProcess
@@ -556,7 +556,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		cartItem := &(*cart.CartItem)[i]
 
 		// If cartItem.Status is RESERVED, skip it (means already processed)
-		if cartItem.Status == "CART_ITEM:RESERVED" {
+		if cartItem.Status == "CART_ITEM:SOLD" {
 			continue // skip already processed items
 		}
 
@@ -582,9 +582,9 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			return nil, err
 		}
 
-		registerOrchestrationProcess(fmt.Sprintf("%s%v","INVENTORY:RESERVED:SUCESSFULL:",cartItem.Product.Sku), &listStepProcess)
+		registerOrchestrationProcess(fmt.Sprintf("%s%v","INVENTORY:SOLD:SUCESSFULL:",cartItem.Product.Sku), &listStepProcess)
 
-		cartItem.Status = "CART_ITEM:RESERVED"
+		cartItem.Status = "CART_ITEM:SOLD"
 
 		httpClientParameter = go_core_http.HttpClientParameter {
 			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cartItem/", cartItem.ID),
@@ -604,11 +604,11 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			return nil, err
 		}
 
-		registerOrchestrationProcess("CART_ITEM:RESERVED:SUCESSFULL", &listStepProcess)
+		registerOrchestrationProcess("CART_ITEM:SOLD:SUCESSFULL", &listStepProcess)
 	}
 
-	// ---------------------- STEP 4 (update cart -from BASKET to RESERVED ) --------------------------
-	resOrder.Cart.Status = "CART:RESERVED"
+	// ---------------------- STEP 4 (update cart -from BASKET to SOLD ) --------------------------
+	resOrder.Cart.Status = "CART:SOLD"
 	
 	httpClientParameter = go_core_http.HttpClientParameter {
 			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/", resOrder.Cart.ID),
@@ -627,10 +627,10 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, err
 	}
 
-	registerOrchestrationProcess("CART:RESERVED:SUCESSFULL", &listStepProcess)
+	registerOrchestrationProcess("CART:SOLD:SUCESSFULL", &listStepProcess)
 
 	// ---------------  STEP 5 update order status --------------------
-	resOrder.Status = "ORDER:RESERVED"
+	resOrder.Status = "ORDER:SOLD"
 	now := time.Now()
 	resOrder.UpdatedAt = &now
 
@@ -645,14 +645,14 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, erro.ErrUpdate
 	}
 
-	registerOrchestrationProcess("ORDER:RESERVED:SUCESSFULL", &listStepProcess)
+	registerOrchestrationProcess("ORDER:SOLD:SUCESSFULL", &listStepProcess)
 
 	// ---------------------- STEP 6 (create a clearance) ----------------------
 	listPayment := []model.Payment{}
 	
 	for i := range *order.Payment{
 		payment := &(*order.Payment)[i]
-		payment.Status = "CLEARANCE:RESERVED"
+		payment.Status = "CLEARANCE:SOLD"
 		payment.Order = resOrder
 		payment.Transaction = resOrder.Transaction
 
@@ -684,7 +684,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		listPayment = append(listPayment, resPayment)
 	}
 
-	registerOrchestrationProcess("CLEARANCE:RESERVED:SUCCESSFULL", &listStepProcess)
+	registerOrchestrationProcess("CLEARANCE:SOLD:SUCCESSFULL", &listStepProcess)
 
 	// fill it
 	resOrder.Payment = &listPayment
