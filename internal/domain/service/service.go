@@ -14,7 +14,10 @@ import (
 	"github.com/go-order/shared/erro"
 	"github.com/go-order/internal/domain/model"
 	database "github.com/go-order/internal/infrastructure/repo/database"
-
+	
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	
 	go_core_http "github.com/eliezerraj/go-core/v2/http"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
@@ -50,7 +53,7 @@ func NewWorkerService(appServer	*model.AppServer,
 }
 
 // about do http call 
-func (s *WorkerService) doHttpCall(ctx context.Context,
+func (s *WorkerService) doHttpCall( ctx context.Context,
 									httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
 	s.logger.Info().
 			 Ctx(ctx).
@@ -470,7 +473,35 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 	registerOrchestrationProcess("ORDER:PENDING:SUCESSFULL", &listStepProcess)
 
-	// --------------------------------------------- 
+	// -------------------------- CREATE A OUTBOX -----------------------------
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+
+	metaData := map[string]any{
+		"otel": carrier,
+		"request-id": fmt.Sprintf("%v",ctx.Value("request-id")),
+	}
+	
+	orderOutbox := model.Outbox{
+		ID:	uuid.New().String(),
+		Type: "order_created",
+		Transaction: order.Transaction,
+		CreatedAt: order.CreatedAt,
+		Metadata: metaData,
+		Data: order,
+	}
+
+	// Create orderOutbox
+	_, err = s.workerRepository.OutboxOrder(ctx, 
+											tx, 
+											&orderOutbox)
+	if err != nil {
+		return nil, err
+	}
+
+	registerOrchestrationProcess("ORDER:OUTBOX:SUCESSFULL", &listStepProcess)
+
+	// --------------------
 	order.StepProcess = &listStepProcess
 	return order, nil
 }

@@ -423,3 +423,56 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 	
 	return row.RowsAffected(), nil
 }
+
+// About create a outbox
+func (w* WorkerRepository) OutboxOrder(	ctx context.Context, 
+										tx pgx.Tx, 
+										orderOutbox *model.Outbox) (*model.Outbox, error){
+
+	w.logger.Info().
+			Ctx(ctx).
+			Str("func","OutboxOrder").Send()
+
+	// trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "database.OutboxOrder")
+	defer span.End()
+
+	conn, err := w.DatabasePG.Acquire(ctx)
+	if err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","OutboxOrder").
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePG.Release(conn)
+
+	// Query Execute
+	var event_id string
+	query := `INSERT INTO public.order_outbox (	event_id,
+												event_type,
+												event_date,
+												transaction_id,
+												event_metadata,
+												event_data)
+				VALUES ($1, $2, $3, $4, $5, $6) RETURNING event_id`
+
+	row := tx.QueryRow(	ctx, 
+						query,			
+						orderOutbox.ID,
+						orderOutbox.Type,
+						orderOutbox.CreatedAt,
+						orderOutbox.Transaction,
+						orderOutbox.Metadata,
+						orderOutbox.Data)
+						
+	if err := row.Scan(&event_id); err != nil {
+		w.logger.Error().
+				Ctx(ctx).
+				Str("func","OutboxOrder").
+				Err(err).Send()
+		return nil, errors.New(err.Error())
+	}
+	
+	return orderOutbox , nil
+}

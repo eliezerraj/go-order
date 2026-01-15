@@ -116,3 +116,21 @@ To run in local machine for local tests creat a .env in /cmd folder
 
     ALTER TABLE public.order ADD constraint order_fk_cart_id_fkey
     FOREIGN KEY (fk_cart_id) REFERENCES public.cart(id);
+
+    CREATE TYPE order_outbox_event_type AS ENUM (
+            'order_created',
+            'order_checkout'
+    );
+        
+    CREATE TABLE order_outbox (
+            event_id uuid NOT NULL,
+            event_type order_outbox_event_type NOT NULL,
+            event_date timestamptz NOT NULL DEFAULT now(),
+            transaction_id VARCHAR(100) NULL,
+            event_metadata json NOT NULL DEFAULT '{}'::json,
+            event_data json NOT NULL DEFAULT '{}'::json,
+            event_error json NULL DEFAULT '{}'::json,
+            CONSTRAINT order_outbox_pkey PRIMARY KEY (event_id)
+    )
+
+    CREATE INDEX idx1_order_outbox ON order_outbox USING btree (event_id, event_date);
