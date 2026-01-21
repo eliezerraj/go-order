@@ -129,3 +129,13 @@ type StepProcess struct {
 	Name		string  	`json:"step_process,omitempty"`
 	ProcessedAt	time.Time 	`json:"processed_at,omitempty"`
 }
+
+type Outbox struct{
+	ID			string  	`json:"event_id,omitempty"`
+	Type		string  	`json:"event_type,omitempty"`
+	Transaction string		`json:"transaction_id,omitempty"`
+	CreatedAt	time.Time 	`json:"event_at,omitempty"`
+	Metadata	interface{}	`json:"event_metadata,omitempty"`
+	Data		interface{}	`json:"event_data,omitempty"`
+	Error		interface{}	`json:"event_error,omitempty"`
+}
