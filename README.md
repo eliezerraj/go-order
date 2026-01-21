@@ -4,11 +4,95 @@
 
    The main purpose is create an order with its carts associated.
 
-## Integration
+## Sequence Diagram
 
-   This is workload requires go-cart, go-inventory and go-clearance running.
+![alt text](add_order.png)
+    
+    title add order
 
-   The integrations are made via http api request.
+    participant user
+    participant order
+    participant cart
+    participant inventory
+
+    user->order:POST /order
+    order->cart:POST /cart
+    cart->cart:add cart\ncart.Status = "CART:PENDING"
+        loop over cartItem
+        cart->inventory:GET /product/{id}
+        cart<--inventory:http 200 (JSON)\nqueryData
+        cart->cart:add cartItem\ncartItem.Status = "CART_ITEM:PENDING"
+        end
+    postData
+    queryData
+    loop over cartItem
+    order->inventory:PUT /inventory/product/{id}
+    order<--inventory:http 200 (JSON)\nputData
+    end
+    order->order:create order\norder.Status = "ORDER:PENDING"
+    order->order:create \norder_outbox
+    user<--order:http 200 (JSON)\npostData
+
+![alt text](checkout_order.png)
+    
+    title checkout order
+
+    participant user
+    participant order
+    participant cart
+    participant inventory
+    participant clearance
+    participant kafka
+    participant worker-event
+    
+    entryspacing 0.7
+    user->order:POST /order/checkout
+    order->cart:GET/cart/{id}
+    order<--cart:http 200 (JSON)\npostData
+
+    loop over all cart_item
+    order->order:cartItem.Status == "CART_ITEM:SOLD"
+    order->inventory:PUT /inventory/product/{id}
+    order<--inventory:http 200 (JSON)\nputData
+    order->cart:PUT /cartItem/{id}
+    order<--cart:http 200 (JSON)\nputData
+    end
+    order->cart:PUT /cart/{id}\nCart.Status = "CART:SOLD"
+    order<--cart:http 200 (JSON)\nputData
+    order->order:Update order\norder.Status = "ORDER:SOLD"
+ 
+    alt addPayment
+ 
+        order->clearance:POST /clearance
+    clearance->order:GET /order/{id}
+    clearance<--order:http 200 (JSON)\ngetData
+    clearance->clearance:create\nPayment
+    clearance->kafka:EVENT topic.clearance
+        user<--clearance:http 200 (JSON)\npostData
+    end
+
+  user<--order:http 200 (JSON)\npostData
+  kafka<-worker-event:EVENT topic.clearance
+  
+![alt text](get_order.png)
+
+    title get order
+
+    participant user
+    participant order
+    participant cart
+    participant clearance
+    
+    entryspacing 0.7
+        user->order:GET /order/{id}
+        order->cart:GET/cart/{id}
+        order<--cart:http 200 (JSON)\nqueryData
+        postData
+        queryData
+    space
+        order->clearance:GET /payment/order/{id}
+        order<--clearance:http 200 (JSON)\nqueryData
+        user<--order:http 200 (JSON)\nqueryData
 
 ## Enviroment variables
 
@@ -54,10 +138,21 @@ To run in local machine for local tests creat a .env in /cmd folder
    
 ## Endpoints
 
-    curl --location 'http://localhost:7004/info'
-    curl --location 'http://localhost:7004/order/96'
+curl --location 'http://localhost:7004/health'
 
-    curl --location 'http://localhost:7004/order' \
+curl --location 'http://localhost:7004/live'
+
+curl --location 'http://localhost:7004/header'
+
+curl --location 'http://localhost:7004/context'
+
+curl --location 'http://localhost:7004/info'
+
+curl --location 'http://localhost:7004/metrics'
+
+curl --location 'http://localhost:7004/order/96'
+
+curl --location 'http://localhost:7004/order' \
     --header 'Content-Type: application/json' \
     --data '{
         "user_id": "eliezer",
@@ -85,7 +180,7 @@ To run in local machine for local tests creat a .env in /cmd folder
             }
     }'
 
-    curl --location 'http://localhost:7004/checkout' \
+curl --location 'http://localhost:7004/checkout' \
     --header 'Content-Type: application/json' \
     --data '{
         "id": 94,
@@ -97,6 +192,20 @@ To run in local machine for local tests creat a .env in /cmd folder
             }
         ]
     }'
+
+## Monitoring
+
+Logs: JSON structured logging via zerolog
+
+Metrics: Available through endpoint /metrics via otel/sdk/metric
+
+Trace: The x-request-id is extract from header and is ingest into context, in order the x-request-id do not exist a new one is generated (uuid)
+
+Errors: Structured error handling with custom error types
+
+## Security
+
+Security Headers: Is implement via go-core midleware
 
 ## Tables
 
@@ -131,6 +240,6 @@ To run in local machine for local tests creat a .env in /cmd folder
             event_data json NOT NULL DEFAULT '{}'::json,
             event_error json NULL DEFAULT '{}'::json,
             CONSTRAINT order_outbox_pkey PRIMARY KEY (event_id)
-    )
+    );
 
     CREATE INDEX idx1_order_outbox ON order_outbox USING btree (event_id, event_date);

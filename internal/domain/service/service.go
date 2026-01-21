@@ -422,7 +422,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 	registerOrchestrationProcess("CART:PENDING:SUCESSFULL", &listStepProcess)
 
-	// -------------------------- UPADATE INVENTORY (PENDING) ---------------
+	// -------------------------- UPDATE INVENTORY (PENDING) ---------------
 	for i := range *cart.CartItem {
 		cartItem := &(*cart.CartItem)[i]
 
