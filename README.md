@@ -4,6 +4,16 @@
 
    The main purpose is create an order with its carts associated.
 
+   To local test you should use the work space:
+   
+   Create a work space (root)
+   
+    go work init ./cmd ../go-core
+
+   Add module (inside /cmd)
+   
+    go work use ..
+    
 ## Sequence Diagram
 
 ![alt text](add_order.png)
@@ -51,28 +61,27 @@
     order<--cart:http 200 (JSON)\npostData
 
     loop over all cart_item
-    order->order:cartItem.Status == "CART_ITEM:SOLD"
+    order->order:cartItem.status == "CART_ITEM:SOLD"
     order->inventory:PUT /inventory/product/{id}
     order<--inventory:http 200 (JSON)\nputData
     order->cart:PUT /cartItem/{id}
     order<--cart:http 200 (JSON)\nputData
     end
-    order->cart:PUT /cart/{id}\nCart.Status = "CART:SOLD"
+    order->cart:PUT /cart/{id}\ncart.status = "CART:SOLD"
     order<--cart:http 200 (JSON)\nputData
-    order->order:Update order\norder.Status = "ORDER:SOLD"
+    order->order:update order\norder.status = "ORDER:SOLD"
  
     alt addPayment
  
         order->clearance:POST /clearance
     clearance->order:GET /order/{id}
     clearance<--order:http 200 (JSON)\ngetData
-    clearance->clearance:create\nPayment
+    clearance->clearance:create Payment\nclearance.status = "CLEARANCE:SOLD"
     clearance->kafka:EVENT topic.clearance
-        user<--clearance:http 200 (JSON)\npostData
+        order<--inventory:http 200 (JSON)\npostData
     end
-
-  user<--order:http 200 (JSON)\npostData
-  kafka<-worker-event:EVENT topic.clearance
+    user<--order:http 200 (JSON)\npostData
+    kafka<-worker-event:EVENT topic.clearance
   
 ![alt text](get_order.png)
 
