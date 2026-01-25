@@ -33,7 +33,7 @@ type WorkerService struct {
 }
 
 // About new worker service
-func NewWorkerService(	workerRepository *database.WorkerRepository, 
+func NewWorkerService(workerRepository *database.WorkerRepository, 
 						appLogger 		*zerolog.Logger,
 						tracerProvider 	*go_core_otel_trace.TracerProvider,
 						endpoint		*[]model.Endpoint) *WorkerService {
@@ -124,22 +124,25 @@ func (s *WorkerService) parsePaymentFromPayload(ctx context.Context, payload int
 }
 
 // about do http call 
-func (s *WorkerService) doHttpCall(ctx context.Context,
-									httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
+func (s *WorkerService) doHttpCall(ctx context.Context,	httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
 
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","doHttpCall").Send()
 
-	resPayload, statusCode, err := s.httpService.DoHttp(ctx, 
-														httpClientParameter)
+	resPayload, statusCode, err := s.httpService.DoHttp(ctx, httpClientParameter)
+
+	s.logger.Info().
+			 Interface("======> httpClientParameter",httpClientParameter).
+			 Interface("======> statusCode", statusCode).Send()
+
 	if err != nil {
 		s.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
 		return nil, err
 	}
-	if statusCode != http.StatusOK {
+	if statusCode != http.StatusOK && statusCode != http.StatusCreated {
 		if statusCode == http.StatusNotFound {
 			s.logger.Warn().
 					 Ctx(ctx).
@@ -644,7 +647,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	resOrder.Cart = *cart
 
 	// ---------------------- STEP 2 (update inventory - PENDING TO SOLD and CartItem) --------------------------
-	endpoint, err = s.getServiceEndpoint(1)
+	endpoint, err = s.getServiceEndpoint(0)
 	if err != nil {
 		return nil, err
 	}
@@ -709,8 +712,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	// ---------------------- STEP 4 (update cart -from BASKET to SOLD ) --------------------------
 	resOrder.Cart.Status = "CART:SOLD"
-	
-	endpoint, err = s.getServiceEndpoint(1)
+	endpoint, err = s.getServiceEndpoint(0)
+
 	if err != nil {
 		return nil, err
 	}

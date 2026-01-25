@@ -17,7 +17,7 @@ import (
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 )
-
+// WorkerRepository struct
 type WorkerRepository struct {
 	DatabasePG 		*go_core_db_pg.DatabasePGServer
 	logger			*zerolog.Logger
