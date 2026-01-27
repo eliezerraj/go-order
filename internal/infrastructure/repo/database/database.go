@@ -13,6 +13,7 @@ import (
 	"github.com/go-order/shared/erro"
 	"github.com/go-order/internal/domain/model"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/codes"
 
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
@@ -77,8 +78,8 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 									order *model.Order) (*model.Order, error){
 
 	w.logger.Info().
-			Ctx(ctx).
-			Str("func","AddOrder").Send()
+		Ctx(ctx).
+		Str("func","AddOrder").Send()
 
 	// trace
 	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.AddOrder", trace.SpanKindInternal)
@@ -110,6 +111,8 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 						order.CreatedAt)
 						
 	if err := row.Scan(&id); err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -136,6 +139,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	// db connection
 	conn, err := w.DatabasePG.Acquire(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -161,6 +166,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 							query, 
 							order.ID)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
@@ -169,6 +176,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	defer rows.Close()
 	
     if err := rows.Err(); err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
 				Ctx(ctx).
 				Err(err).Msg("error iterating order rows")
@@ -194,9 +203,11 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 							&nullOrderUpdatedAt,
 						)
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			w.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 			return nil, err
         }
 
@@ -207,9 +218,9 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 
 	if resOrder == (model.Order{}) {
 		w.logger.Warn().
-				Ctx(ctx).
-				Err(erro.ErrNotFound).
-				Interface("order.ID",order.ID).Send()
+			Ctx(ctx).
+			Err(erro.ErrNotFound).
+			Interface("order.ID",order.ID).Send()
 
 		return nil, erro.ErrNotFound
 	}
@@ -376,8 +387,8 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 										tx pgx.Tx, 
 										order *model.Order) (int64, error){
 	w.logger.Info().
-			Ctx(ctx).
-			Str("func","UpdateOrder").Send()
+		Ctx(ctx).
+		Str("func","UpdateOrder").Send()
 			
 	// trace
 	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.UpdateOrder", trace.SpanKindInternal)
@@ -395,10 +406,11 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 						order.Status,
 						order.UpdatedAt)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		w.logger.Error().
-				Ctx(ctx).
-				Str("func","UpdateOrder").
-				Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return 0, fmt.Errorf("FAILED to update order: %w", err)
 	}
 	
@@ -411,8 +423,8 @@ func (w* WorkerRepository) OutboxOrder(	ctx context.Context,
 										orderOutbox *model.Outbox) (*model.Outbox, error){
 
 	w.logger.Info().
-			Ctx(ctx).
-			Str("func","OutboxOrder").Send()
+		Ctx(ctx).
+		Str("func","OutboxOrder").Send()
 
 	// trace
 	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.OutboxOrder", trace.SpanKindInternal)
@@ -438,14 +450,16 @@ func (w* WorkerRepository) OutboxOrder(	ctx context.Context,
 						orderOutbox.Data)
 						
 	if err := row.Scan(&event_id); err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		if strings.Contains(err.Error(), "duplicate key value violates") {
     		w.logger.Warn().
-					 Ctx(ctx).
-					 Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 		} else {
 			w.logger.Error().
-					 Ctx(ctx).
-				     Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 		}
 		return nil, fmt.Errorf("FAILED to insert order: %w", err)
 	}

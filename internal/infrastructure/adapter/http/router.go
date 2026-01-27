@@ -17,7 +17,8 @@ import (
 	"github.com/go-order/internal/domain/model"
 	"github.com/go-order/internal/domain/service"
 	"go.opentelemetry.io/otel/trace"
-
+	"go.opentelemetry.io/otel/codes"
+	
 	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
 )
@@ -172,6 +173,8 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 	defer req.Body.Close()
 
     if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return h.ErrorHandler(h.getTraceID(ctx), erro.ErrBadRequest)
     }
 
@@ -193,6 +196,8 @@ func (h *HttpRouters) GetOrder(rw http.ResponseWriter, req *http.Request) error 
 	vars := mux.Vars(req)
 	orderID, err := h.parseIDParam(vars)
     if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return h.ErrorHandler(h.getTraceID(ctx), err)
     }
 
@@ -217,6 +222,8 @@ func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error 
 	err := json.NewDecoder(req.Body).Decode(&order)
 	defer req.Body.Close()
     if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return h.ErrorHandler(h.getTraceID(ctx), err)
     }
 
