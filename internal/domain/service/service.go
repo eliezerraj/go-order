@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/codes"
 
 	go_core_http "github.com/eliezerraj/go-core/v2/http"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
@@ -133,42 +134,42 @@ func (s *WorkerService) doHttpCall(ctx context.Context,	httpClientParameter go_c
 	resPayload, statusCode, err := s.httpService.DoHttp(ctx, httpClientParameter)
 
 	s.logger.Info().
-			 Interface("======> httpClientParameter",httpClientParameter).
-			 Interface("======> statusCode", statusCode).Send()
+		Interface("======> httpClientParameter",httpClientParameter).
+		Interface("======> statusCode", statusCode).Send()
 
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 	if statusCode != http.StatusOK && statusCode != http.StatusCreated {
 		if statusCode == http.StatusNotFound {
 			s.logger.Warn().
-					 Ctx(ctx).
-					 Err(erro.ErrNotFound).Send()
+				Ctx(ctx).
+				Err(erro.ErrNotFound).Send()
 			return nil, erro.ErrNotFound
 		} else {		
 			jsonString, err := json.Marshal(resPayload)
 			if err != nil {
 				s.logger.Error().
-						Ctx(ctx).
-						Err(err).Send()
+					Ctx(ctx).
+					Err(err).Send()
 				return nil, fmt.Errorf("FAILED to marshal http response: %w", err)
 			}			
 			
 			message := model.APIError{}
 			if err := json.Unmarshal(jsonString, &message); err != nil {
 				s.logger.Error().
-						Ctx(ctx).
-						Err(err).Send()
+					Ctx(ctx).
+					Err(err).Send()
 				return nil, fmt.Errorf("FAILED to unmarshal error response: %w", err)
 			}
 
 			newErr := fmt.Errorf("http call error: status code %d - message: %s", statusCode, message.Msg)
 			s.logger.Error().
-					Ctx(ctx).
-					Err(newErr).Send()
+				Ctx(ctx).
+				Err(newErr).Send()
 			return nil, newErr
 		}
 	}
@@ -210,20 +211,24 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	spanDB.End()
 
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
+			Ctx(ctx).
+			Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
 
 	s.logger.Info().
-			 Ctx(ctx).
-			 Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
+		Ctx(ctx).
+		Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 	
 	// ----------------------------------------------------------		
 	// check service/dependencies 
 	endpoint, err := s.getServiceEndpoint(0)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	headers := s.buildHeaders(ctx)
@@ -238,20 +243,24 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	// call a service via http
 	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
+			Ctx(ctx).
+			Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
+
 	s.logger.Info().
-			 Ctx(ctx).
-			 Str("func","HealthCheck").
-			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
+		Ctx(ctx).
+		Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
 
 	// ----------------------------------------------------------
 	// call a service via http
 	endpoint, err = s.getServiceEndpoint(1)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
@@ -265,9 +274,11 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	// call a service via http
 	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
+			Ctx(ctx).
+			Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
@@ -291,14 +302,16 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 	// call a service via http
 	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
+			Ctx(ctx).
+			Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			 Ctx(ctx).
-			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
+		Ctx(ctx).
+		Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
 
 	// final
 	return nil
@@ -331,8 +344,8 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 func (s * WorkerService) GetOrder(ctx context.Context, 
 								  order *model.Order) (*model.Order, error){
 	s.logger.Info().
-			 Ctx(ctx).
-			 Str("func","GetOrder").Send()
+		Ctx(ctx).
+		Str("func","GetOrder").Send()
 
 	// trace and log
 	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
@@ -350,6 +363,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	// --------------- STEP 1 (get cart and cart itens details) ------------
 	endpoint, err := s.getServiceEndpoint(0)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -363,6 +378,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	// call a service via http
 	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
 			Ctx(ctx).
 			Err(err).Send()
@@ -371,15 +388,19 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 
 	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
 	// ---------------------- STEP 2 (get payment) --------------------------
 	endpoint, err = s.getServiceEndpoint(2)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	httpClientParameter = go_core_http.HttpClientParameter {
@@ -392,17 +413,21 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	// call a service via http
 	resPayload, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
 	listPayment, err := s.parseListPaymentFromPayload(ctx, resPayload)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -422,8 +447,8 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 func (s *WorkerService) AddOrder(ctx context.Context, 
 								order *model.Order) (*model.Order, error){
 	s.logger.Info().
-			 Ctx(ctx).
-			 Str("func","AddOrder").Send()
+		Ctx(ctx).
+		Str("func","AddOrder").Send()
 
 	// trace and log
 	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
@@ -431,6 +456,8 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
 			Ctx(ctx).
 			Err(err).Send()
@@ -457,6 +484,8 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	// ---------------------- STEP 1 (create a cart) --------------------------
 	endpoint, err := s.getServiceEndpoint(0)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -473,15 +502,19 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 	// call a service via http
 	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
-	if err != nil {		
+	if err != nil {	
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())	
 		return nil, err
 	}
 
 	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -490,6 +523,8 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	// -------------------------- UPDATE INVENTORY (PENDING) ---------------
 	endpoint, err = s.getServiceEndpoint(1)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -512,9 +547,11 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 		_, err = s.doHttpCall(ctx, httpClientParameter)
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 			return nil, err
 		}
 
@@ -577,8 +614,8 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 func (s *WorkerService) Checkout(ctx context.Context, 
 								 order *model.Order) (*model.Order, error){
 	s.logger.Info().
-			 Ctx(ctx).
-			 Str("func","Checkout").Send()
+		Ctx(ctx).
+		Str("func","Checkout").Send()
 
 	// trace and log
 	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
@@ -586,9 +623,11 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -618,6 +657,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	// ---------------------- STEP 1 (get cart) --------------------------
 	endpoint, err := s.getServiceEndpoint(0)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -630,6 +671,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
 			Ctx(ctx).
 			Err(err).Send()
@@ -638,9 +681,11 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -649,11 +694,15 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	// ---------------------- STEP 2 (update inventory - PENDING TO SOLD and CartItem) --------------------------
 	endpoint, err = s.getServiceEndpoint(1)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
 	endpoint2, err := s.getServiceEndpoint(0)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -680,9 +729,11 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 		_, err = s.doHttpCall(ctx, httpClientParameter)
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 			return nil, err
 		}
 
@@ -699,11 +750,12 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		}
 
 		_, err = s.doHttpCall(ctx, httpClientParameter)
-
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 			return nil, err
 		}
 
@@ -728,9 +780,11 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -746,6 +800,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, err
 	}
 	if row == 0 {
+		span.RecordError(erro.ErrUpdate) 
+        span.SetStatus(codes.Error, erro.ErrUpdate.Error())
 		s.logger.Error().
 				Ctx(ctx).
 				Err(erro.ErrUpdate).Send()
@@ -759,6 +815,8 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	endpoint, err = s.getServiceEndpoint(2)
 	if err != nil {
+		span.RecordError(err) 
+        span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -778,14 +836,18 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 		resPayload, err := s.doHttpCall(ctx,httpClientParameter)
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			return nil, err
 		}
 
 		respayment, err := s.parsePaymentFromPayload(ctx, resPayload)
 		if err != nil {
+			span.RecordError(err) 
+			span.SetStatus(codes.Error, err.Error())
 			s.logger.Error().
-					Ctx(ctx).
-					Err(err).Send()
+				Ctx(ctx).
+				Err(err).Send()
 			return nil, err
 		}
 		
