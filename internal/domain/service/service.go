@@ -647,12 +647,12 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	resOrder.Cart = *cart
 
 	// ---------------------- STEP 2 (update inventory - PENDING TO SOLD and CartItem) --------------------------
-	endpoint, err = s.getServiceEndpoint(0)
+	endpoint, err = s.getServiceEndpoint(1)
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint2, err := s.getServiceEndpoint(1)
+	endpoint2, err := s.getServiceEndpoint(0)
 	if err != nil {
 		return nil, err
 	}
