@@ -1,30 +1,33 @@
 package database
 
 import (
-		"context"
-		"errors"
-		"database/sql"
+	"time"
+	"fmt"
+	"strings"
+	"context"
+	"database/sql"
 
-		"github.com/rs/zerolog"
-		"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog"
+	"github.com/jackc/pgx/v5"
 
-		"github.com/go-order/shared/erro"
-		"github.com/go-order/internal/domain/model"
+	"github.com/go-order/shared/erro"
+	"github.com/go-order/internal/domain/model"
+	"go.opentelemetry.io/otel/trace"
 
-		go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
-		go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
+	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
+	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 )
-
-var tracerProvider go_core_otel_trace.TracerProvider
-
+// WorkerRepository struct
 type WorkerRepository struct {
-	DatabasePG *go_core_db_pg.DatabasePGServer
-	logger		*zerolog.Logger
+	DatabasePG 		*go_core_db_pg.DatabasePGServer
+	logger			*zerolog.Logger
+	tracerProvider 	*go_core_otel_trace.TracerProvider
 }
 
 // Above new worker
 func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
-						appLogger *zerolog.Logger) *WorkerRepository{
+						appLogger *zerolog.Logger,
+						tracerProvider *go_core_otel_trace.TracerProvider) *WorkerRepository{
 	logger := appLogger.With().
 						Str("package", "repo.database").
 						Logger()
@@ -34,7 +37,16 @@ func NewWorkerRepository(databasePG *go_core_db_pg.DatabasePGServer,
 	return &WorkerRepository{
 		DatabasePG: databasePG,
 		logger: &logger,
+		tracerProvider: tracerProvider,
 	}
+}
+
+// Helper function to convert nullable time to pointer
+func (w *WorkerRepository) pointerTime(nt sql.NullTime) *time.Time {
+	if nt.Valid {
+		return &nt.Time
+	}
+	return nil
 }
 
 // Above get stats from database
@@ -69,18 +81,8 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 			Str("func","AddOrder").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.AddOrder")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.AddOrder", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Str("func","AddOrder").
-				Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	//Prepare
 	var id int
@@ -110,9 +112,8 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 	if err := row.Scan(&id); err != nil {
 		w.logger.Error().
 				Ctx(ctx).
-				Str("func","AddOrder").
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("FAILED to scan order ID: %w", err)
 	}
 
 	// Set PK
@@ -123,13 +124,13 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 
 // About get an order
 func (w *WorkerRepository) GetOrder(ctx context.Context,
-											order *model.Order) (*model.Order, error){
+									order *model.Order) (*model.Order, error){
 	w.logger.Info().
 			Ctx(ctx).
-			Str("func","GetOrderService").Send()
+			Str("func","GetOrder").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrderService")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.GetOrder", trace.SpanKindInternal)
 	defer span.End()
 
 	// db connection
@@ -137,9 +138,8 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).
-				Str("func","GetOrderService").
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("FAILED to acquire database connection: %w", err)
 	}
 	defer w.DatabasePG.Release(conn)
 
@@ -163,23 +163,20 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	if err != nil {
 		w.logger.Error().
 				Ctx(ctx).
-				Str("func","GetOrderService").
 				Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, fmt.Errorf("FAILED to query order: %w", err)
 	}
 	defer rows.Close()
 	
     if err := rows.Err(); err != nil {
 		w.logger.Error().
 				Ctx(ctx).
-				Str("func","GetOrderService").
-				Err(err).Msg("fatal error closing rows")
-        return nil, errors.New(err.Error())
+				Err(err).Msg("error iterating order rows")
+        return nil, fmt.Errorf("error iterating order rows: %w", err)
     }
 
 	resOrder := model.Order{}
 	resCart := model.Cart{}
-	//resPayment := model.Payment{}
 
 	var nullOrderUpdatedAt sql.NullTime
 
@@ -199,27 +196,21 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 		if err != nil {
 			w.logger.Error().
 					Ctx(ctx).
-					Str("func","GetOrderService").
 					Err(err).Send()
-			return nil, errors.New(err.Error())
+			return nil, err
         }
 
-		if nullOrderUpdatedAt.Valid {
-        	resOrder.UpdatedAt = &nullOrderUpdatedAt.Time
-    	} else {
-			resOrder.UpdatedAt = nil
-		}
+		resOrder.UpdatedAt = w.pointerTime(nullOrderUpdatedAt)
 
 		resOrder.Cart = resCart
-		//resOrder.Payment = &resPayment
 	}
 
 	if resOrder == (model.Order{}) {
 		w.logger.Warn().
 				Ctx(ctx).
-				Str("func","GetOrderService").
 				Err(erro.ErrNotFound).
 				Interface("order.ID",order.ID).Send()
+
 		return nil, erro.ErrNotFound
 	}
 		
@@ -227,14 +218,14 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 }
 
 // About get an order, cart, cart item and products
-func (w *WorkerRepository) GetOrderV1(ctx context.Context,
-									order *model.Order) (*model.Order, error){
+/*func (w *WorkerRepository) GetOrderV1(	ctx context.Context,
+										order *model.Order) (*model.Order, error){
 	w.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrder").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.GetOrder")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.GetOrder", trace.SpanKindInternal)
 	defer span.End()
 
 	// db connection
@@ -378,7 +369,7 @@ func (w *WorkerRepository) GetOrderV1(ctx context.Context,
 	}
 		
 	return &resOrder, nil
-}
+}*/
 
 // About update an order
 func (w* WorkerRepository) UpdateOrder(ctx context.Context, 
@@ -389,18 +380,8 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 			Str("func","UpdateOrder").Send()
 			
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.UpdateOrder")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.UpdateOrder", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Str("func","UpdateOrder").
-				Err(err).Send()
-		return 0, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	// Query Execute
 	query := `UPDATE public.order
@@ -418,7 +399,7 @@ func (w* WorkerRepository) UpdateOrder(ctx context.Context,
 				Ctx(ctx).
 				Str("func","UpdateOrder").
 				Err(err).Send()
-		return 0, errors.New(err.Error())
+		return 0, fmt.Errorf("FAILED to update order: %w", err)
 	}
 	
 	return row.RowsAffected(), nil
@@ -434,18 +415,8 @@ func (w* WorkerRepository) OutboxOrder(	ctx context.Context,
 			Str("func","OutboxOrder").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "database.OutboxOrder")
+	ctx, span := w.tracerProvider.SpanCtx(ctx, "database.OutboxOrder", trace.SpanKindInternal)
 	defer span.End()
-
-	conn, err := w.DatabasePG.Acquire(ctx)
-	if err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Str("func","OutboxOrder").
-				Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	defer w.DatabasePG.Release(conn)
 
 	// Query Execute
 	var event_id string
@@ -467,12 +438,19 @@ func (w* WorkerRepository) OutboxOrder(	ctx context.Context,
 						orderOutbox.Data)
 						
 	if err := row.Scan(&event_id); err != nil {
-		w.logger.Error().
-				Ctx(ctx).
-				Str("func","OutboxOrder").
-				Err(err).Send()
-		return nil, errors.New(err.Error())
+		if strings.Contains(err.Error(), "duplicate key value violates") {
+    		w.logger.Warn().
+					 Ctx(ctx).
+					 Err(err).Send()
+		} else {
+			w.logger.Error().
+					 Ctx(ctx).
+				     Err(err).Send()
+		}
+		return nil, fmt.Errorf("FAILED to insert order: %w", err)
 	}
+
+	orderOutbox.ID = event_id
 	
 	return orderOutbox , nil
 }

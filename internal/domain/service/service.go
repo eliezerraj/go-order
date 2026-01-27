@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"time"
-	"errors"
 	"context"
 	"net/http"
 	"encoding/json"
@@ -17,25 +16,28 @@ import (
 	
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	
+	"go.opentelemetry.io/otel/trace"
+
 	go_core_http "github.com/eliezerraj/go-core/v2/http"
 	go_core_db_pg "github.com/eliezerraj/go-core/v2/database/postgre"
 	go_core_otel_trace "github.com/eliezerraj/go-core/v2/otel/trace"
+	go_core_midleware "github.com/eliezerraj/go-core/v2/middleware"
 )
 
-var tracerProvider go_core_otel_trace.TracerProvider
-
 type WorkerService struct {
-	appServer			*model.AppServer
-	workerRepository	*database.WorkerRepository
+	workerRepository 	*database.WorkerRepository
 	logger 				*zerolog.Logger
-	httpService			*go_core_http.HttpService		 	
+	tracerProvider 		*go_core_otel_trace.TracerProvider
+	httpService			*go_core_http.HttpService
+	endpoint			*[]model.Endpoint	
 }
 
 // About new worker service
-func NewWorkerService(appServer	*model.AppServer,
-					  workerRepository *database.WorkerRepository, 
-					  appLogger *zerolog.Logger) *WorkerService {
+func NewWorkerService(workerRepository *database.WorkerRepository, 
+						appLogger 		*zerolog.Logger,
+						tracerProvider 	*go_core_otel_trace.TracerProvider,
+						endpoint		*[]model.Endpoint) *WorkerService {
+
 	logger := appLogger.With().
 						Str("package", "domain.service").
 						Logger()
@@ -45,51 +47,128 @@ func NewWorkerService(appServer	*model.AppServer,
 	httpService := go_core_http.NewHttpService(&logger)					
 
 	return &WorkerService{
-		appServer: appServer,
 		workerRepository: workerRepository,
 		logger: &logger,
+		tracerProvider: tracerProvider,
 		httpService: httpService,
+		endpoint: endpoint,
 	}
 }
 
+// Helper: Get service endpoint by index with error handling
+func (s *WorkerService) getServiceEndpoint(index int) (*model.Endpoint, error) {
+	if s.endpoint == nil || len(*s.endpoint) <= index {
+		return nil, fmt.Errorf("service endpoint at index %d not found", index)
+	}
+	return &(*s.endpoint)[index], nil
+}
+
+// Helper: Build HTTP headers with request ID
+func (s *WorkerService) buildHeaders(ctx context.Context) map[string]string {
+	requestID := go_core_midleware.GetRequestID(ctx)
+	return map[string]string{
+		"Content-Type":  "application/json;charset=UTF-8",
+		"X-Request-Id":  requestID,
+	}
+}
+
+// Helper: Parse cart from HTTP response payload
+func (s *WorkerService) parseCartFromPayload(ctx context.Context, payload interface{}) (*model.Cart, error) {
+	
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to marshal response payload: %w", err)
+	}
+
+	cart := &model.Cart{}
+	if err := json.Unmarshal(jsonString, cart); err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to unmarshal cart: %w", err)
+	}
+	return cart, nil
+}
+
+// Helper: Parse cart from HTTP response payload
+func (s *WorkerService) parseListPaymentFromPayload(ctx context.Context, payload interface{}) (*[]model.Payment, error) {
+
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to marshal response payload: %w", err)
+	}
+
+	payment := &[]model.Payment{}
+	if err := json.Unmarshal(jsonString, payment); err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to unmarshal payment: %w", err)
+	}
+	return payment, nil
+}
+
+// Helper: Parse payment from HTTP response payload
+func (s *WorkerService) parsePaymentFromPayload(ctx context.Context, payload interface{}) (*model.Payment, error) {
+	
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to marshal response payload: %w", err)
+	}
+
+	payment := &model.Payment{}
+	if err := json.Unmarshal(jsonString, payment); err != nil {
+		s.logger.Error().Ctx(ctx).Err(err).Send()
+		return nil, fmt.Errorf("FAILED to unmarshal payment: %w", err)
+	}
+	return payment, nil
+}
+
 // about do http call 
-func (s *WorkerService) doHttpCall( ctx context.Context,
-									httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
+func (s *WorkerService) doHttpCall(ctx context.Context,	httpClientParameter go_core_http.HttpClientParameter) (interface{},error) {
+
 	s.logger.Info().
 			 Ctx(ctx).
 			 Str("func","doHttpCall").Send()
 
-	resPayload, statusCode, err := s.httpService.DoHttp(ctx, 
-														httpClientParameter)
+	resPayload, statusCode, err := s.httpService.DoHttp(ctx, httpClientParameter)
+
+	s.logger.Info().
+			 Interface("======> httpClientParameter",httpClientParameter).
+			 Interface("======> statusCode", statusCode).Send()
+
 	if err != nil {
 		s.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
 		return nil, err
 	}
-
-	if statusCode != http.StatusOK {
+	if statusCode != http.StatusOK && statusCode != http.StatusCreated {
 		if statusCode == http.StatusNotFound {
 			s.logger.Warn().
 					 Ctx(ctx).
 					 Err(erro.ErrNotFound).Send()
 			return nil, erro.ErrNotFound
 		} else {		
-			jsonString, err  := json.Marshal(resPayload)
+			jsonString, err := json.Marshal(resPayload)
 			if err != nil {
 				s.logger.Error().
-						 Ctx(ctx).
-						 Err(err).Send()
-				return nil, errors.New(err.Error())
+						Ctx(ctx).
+						Err(err).Send()
+				return nil, fmt.Errorf("FAILED to marshal http response: %w", err)
 			}			
 			
 			message := model.APIError{}
-			json.Unmarshal(jsonString, &message)
+			if err := json.Unmarshal(jsonString, &message); err != nil {
+				s.logger.Error().
+						Ctx(ctx).
+						Err(err).Send()
+				return nil, fmt.Errorf("FAILED to unmarshal error response: %w", err)
+			}
 
-			newErr := errors.New(fmt.Sprintf("http call error: status code %d - message: %s", message.StatusCode ,message.Msg))
+			newErr := fmt.Errorf("http call error: status code %d - message: %s", statusCode, message.Msg)
 			s.logger.Error().
-					 Ctx(ctx).
-					 Err(newErr).Send()
+					Ctx(ctx).
+					Err(newErr).Send()
 			return nil, newErr
 		}
 	}
@@ -122,124 +201,118 @@ func (s * WorkerService) HealthCheck(ctx context.Context) error {
 			Ctx(ctx).
 			Str("func","HealthCheck").Send()
 
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.HealthCheck")
+	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.HealthCheck", trace.SpanKindServer)
 	defer span.End()
 
 	// Check database health
-	_, spanDB := tracerProvider.SpanCtx(ctx, "DatabasePG.Ping")
+	ctx, spanDB := s.tracerProvider.SpanCtx(ctx, "DatabasePG.Ping", trace.SpanKindInternal)
 	err := s.workerRepository.DatabasePG.Ping()
+	spanDB.End()
+
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
 				 Err(err).Msg("*** Database HEALTH CHECK FAILED ***")
 		return erro.ErrHealthCheck
 	}
-	spanDB.End()
 
 	s.logger.Info().
 			 Ctx(ctx).
-			 Str("func","HealthCheck").
 			 Msg("*** Database HEALTH CHECK SUCCESSFULL ***")
 	
 	// ----------------------------------------------------------		
 	// check service/dependencies 
-	headers := map[string]string{
-		"Content-Type":  "application/json;charset=UTF-8",
+	endpoint, err := s.getServiceEndpoint(0)
+	if err != nil {
+		return err
 	}
-
-	ctxService00, spanService00 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[0].HostName )
+	headers := s.buildHeaders(ctx)
 
 	httpClientParameter := go_core_http.HttpClientParameter {
-		Url:	(*s.appServer.Endpoint)[0].Url + "/health",
+		Url:	endpoint.Url + "/health",
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	_, err = s.doHttpCall(ctxService00, 
-						   httpClientParameter)
+	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				Ctx(ctxService00).
-				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[0].HostName )
-		spanService00.End()		
+				Ctx(ctx).
+				Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			 Ctx(ctxService00).
+			 Ctx(ctx).
 			 Str("func","HealthCheck").
-			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[0].HostName )
-
-	spanService00.End()
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
 
 	// ----------------------------------------------------------
 	// call a service via http
-	ctxService01, spanService01 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[1].HostName )
+	endpoint, err = s.getServiceEndpoint(1)
+	if err != nil {
+		return err
+	}
 
 	httpClientParameter = go_core_http.HttpClientParameter {
-		Url:	(*s.appServer.Endpoint)[1].Url + "/health",
+		Url:	endpoint.Url + "/health",
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[1].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	_, err = s.doHttpCall(ctxService01, 
-						   httpClientParameter)
+	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				 Ctx(ctxService01).
-				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[1].HostName )
+				 Ctx(ctx).
+				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			 Ctx(ctxService01).
-			 Str("func","HealthCheck").
-			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[1].HostName )
+			 Ctx(ctx).
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
 
-	spanService01.End()
-	
 	// ----------------------------------------------------------
 	// call a service via http
-	ctxService02, spanService02 := tracerProvider.SpanCtx(ctx, "health.service." + (*s.appServer.Endpoint)[2].HostName )
+	endpoint, err = s.getServiceEndpoint(2)
+	if err != nil {
+		return err
+	}
 
 	httpClientParameter = go_core_http.HttpClientParameter {
-		Url:	(*s.appServer.Endpoint)[2].Url + "/health",
+		Url:	endpoint.Url + "/health",
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	_, err = s.doHttpCall(ctxService02, 
-						   httpClientParameter)
+	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
 		s.logger.Error().
-				 Ctx(ctxService02).
-				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", (*s.appServer.Endpoint)[2].HostName )
+				 Ctx(ctx).
+				 Err(err).Msgf("*** Service %s HEALTH CHECK FAILED ***", endpoint.HostName)
 		return erro.ErrHealthCheck
 	}
 	s.logger.Info().
-			 Ctx(ctxService02).
-			 Str("func","HealthCheck").
-			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", (*s.appServer.Endpoint)[2].HostName )
-
-	spanService02.End()
+			 Ctx(ctx).
+			 Msgf("*** Service %s HEALTH CHECK SUCCESSFULL ***", endpoint.HostName)
 
 	// final
 	return nil
 }
 
 // About get order (usind join, all tables in the same database)
-func (s * WorkerService) GetOrderV1(ctx context.Context, 
+/*func (s * WorkerService) GetOrderV1(ctx context.Context, 
 								    order *model.Order) (*model.Order, error){
 	s.logger.Info().
 			Ctx(ctx).
 			Str("func","GetOrderV1").Send()
 
 	// trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1")
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrderV1", trace.SpanKindServer)
 	defer span.End()
 
 	// Call a service
@@ -252,7 +325,7 @@ func (s * WorkerService) GetOrderV1(ctx context.Context,
 	}
 								
 	return resOrder, nil
-}
+}*/
 
 // About get order and complete cart via service
 func (s * WorkerService) GetOrder(ctx context.Context, 
@@ -262,7 +335,7 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 			 Str("func","GetOrder").Send()
 
 	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.GetOrder")
+	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
 	defer span.End()
 
 	// Call a service
@@ -272,53 +345,52 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 	}
 			
 	// prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-
-	headers := map[string]string{
-		"Content-Type": "application/json;charset=UTF-8",
-		"X-Request-Id": trace_id,
-	}
+	headers := s.buildHeaders(ctx)
 
 	// --------------- STEP 1 (get cart and cart itens details) ------------
+	endpoint, err := s.getServiceEndpoint(0)
+	if err != nil {
+		return nil, err
+	}
+
 	httpClientParameter := go_core_http.HttpClientParameter {
-		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/" , resOrder.Cart.ID ),
+		Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/cart/" , resOrder.Cart.ID ),
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	resPayload, err := s.doHttpCall(ctx, 
-									httpClientParameter)
+	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
+	if err != nil {
+		s.logger.Error().
+			Ctx(ctx).
+			Err(err).Send()
+		return nil, err
+	}
+
+	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
 				 Err(err).Send()
 		return nil, err
 	}
-
-	// convert json to struct
-	jsonString, err  := json.Marshal(resPayload)
-	if err != nil {
-		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	cart := model.Cart{}
-	json.Unmarshal(jsonString, &cart)
 
 	// ---------------------- STEP 2 (get payment) --------------------------
+	endpoint, err = s.getServiceEndpoint(2)
+	if err != nil {
+		return nil, err
+	}
 	httpClientParameter = go_core_http.HttpClientParameter {
-		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[2].Url , "/payment/order/" , resOrder.ID ),
+		Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/payment/order/" , resOrder.ID ),
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
 	// call a service via http
-	resPayload, err = s.doHttpCall(ctx, 
-									httpClientParameter)
+	resPayload, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
@@ -326,26 +398,23 @@ func (s * WorkerService) GetOrder(ctx context.Context,
 		return nil, err
 	}
 
-	// convert json to struct
-	jsonString, err = json.Marshal(resPayload)
+	listPayment, err := s.parseListPaymentFromPayload(ctx, resPayload)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
 				 Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, err
 	}
-	listPayment := []model.Payment{}
-	json.Unmarshal(jsonString, &listPayment)
 
-	// Clean the order data in order to avoid cycle information
-	for i := range listPayment{
-		listPayment[i].Order = nil
+	// Clean the order data in order to avoid repetition information
+	for i := range *listPayment{
+		(*listPayment)[i].Order = nil
 	}
 	
 	// ------------------------------------------------------
 	// fill response
-	resOrder.Cart = cart
-	resOrder.Payment = &listPayment
+	resOrder.Cart = *cart
+	resOrder.Payment = listPayment
 	return resOrder, nil
 }
 
@@ -357,14 +426,14 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 			 Str("func","AddOrder").Send()
 
 	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddOrder")
+	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
 	if err != nil {
 		s.logger.Error().
-				 Ctx(ctx).
-				 Err(err).Send()
+			Ctx(ctx).
+			Err(err).Send()
 		return nil, err
 	}
 
@@ -383,64 +452,65 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	listStepProcess := []model.StepProcess{}
 
 	// prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-
-	headers := map[string]string{
-		"Content-Type":  "application/json;charset=UTF-8",
-		"X-Request-Id": trace_id,
-	}
+	headers := s.buildHeaders(ctx)
 
 	// ---------------------- STEP 1 (create a cart) --------------------------
+	endpoint, err := s.getServiceEndpoint(0)
+	if err != nil {
+		return nil, err
+	}
+
 	// prepare data
 	order.Cart.Status = "CART:PENDING"
 
 	httpClientParameter := go_core_http.HttpClientParameter {
-		Url:	(*s.appServer.Endpoint)[0].Url + "/cart",
+		Url:	endpoint.Url + "/cart",
 		Method:	"POST",
-		Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 		Body: order.Cart,
 	}
 
 	// call a service via http
-	resPayload, err := s.doHttpCall(ctx, 
-									httpClientParameter)
-
+	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {		
 		return nil, err
 	}
 
-	jsonString, err  := json.Marshal(resPayload)
+	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
 				 Err(err).Send()
-		return nil, errors.New(err.Error())
+		return nil, err
 	}
-	cart := model.Cart{}
-	json.Unmarshal(jsonString, &cart)
 
 	registerOrchestrationProcess("CART:PENDING:SUCESSFULL", &listStepProcess)
-
+	
 	// -------------------------- UPDATE INVENTORY (PENDING) ---------------
+	endpoint, err = s.getServiceEndpoint(1)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range *cart.CartItem {
+
 		cartItem := &(*cart.CartItem)[i]
 
-		bodyInventory := model.Inventory { 
+		inventory := model.Inventory { 
 			Pending: cartItem.Quantity,
 			Available: cartItem.Quantity * -1,
 		}
 
 		httpClientParameter = go_core_http.HttpClientParameter {
-			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[1].Url , "/inventory/product/", cartItem.Product.Sku),
+			Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/inventory/product/", cartItem.Product.Sku),
 			Method:	"PUT",
-			Timeout: (*s.appServer.Endpoint)[1].HttpTimeout,
+			Timeout: endpoint.HttpTimeout,
 			Headers: &headers,
-			Body: bodyInventory,
+			Body: inventory,
 		}
 
-		_, err = s.doHttpCall(ctx, 
-							  httpClientParameter)
+		_, err = s.doHttpCall(ctx, httpClientParameter)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -450,10 +520,11 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 		registerOrchestrationProcess(fmt.Sprintf("%s%v","INVENTORY:PENDING:SUCESSFULL:",cartItem.Product.Sku), &listStepProcess)
 	}
+
 	// -------------------------- CREATE A ORDER -----------------------------
 	// prepare data
 	order.CreatedAt = time.Now()
-	order.Cart = cart
+	order.Cart = *cart
 	order.Transaction = "order:" + uuid.New().String()
 	order.Status = "ORDER:PENDING"
 
@@ -463,9 +534,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	}
 
 	// Create order
-	resOrder, err := s.workerRepository.AddOrder(ctx, 
-												tx, 
-												order)
+	resOrder, err := s.workerRepository.AddOrder(ctx, tx, order)
 	if err != nil {
 		return nil, err
 	}
@@ -492,9 +561,7 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 	}
 
 	// Create orderOutbox
-	_, err = s.workerRepository.OutboxOrder(ctx, 
-											tx, 
-											&orderOutbox)
+	_, err = s.workerRepository.OutboxOrder(ctx, tx, &orderOutbox)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +581,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			 Str("func","Checkout").Send()
 
 	// trace and log
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.Checkout")
+	ctx, span := s.tracerProvider.SpanCtx(ctx, "service.GetOrder", trace.SpanKindServer)
 
 	// prepare database
 	tx, conn, err := s.workerRepository.DatabasePG.StartTx(ctx)
@@ -545,24 +612,31 @@ func (s *WorkerService) Checkout(ctx context.Context,
 	// create saga orchestration process
 	listStepProcess := []model.StepProcess{}
 
-	// 	prepare headers http for calling services
-	trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
+	// prepare headers http for calling services
+	headers := s.buildHeaders(ctx)
 
-	headers := map[string]string{
-		"Content-Type":  "application/json;charset=UTF-8",
-		"X-Request-Id": trace_id,
-	}
-	
 	// ---------------------- STEP 1 (get cart) --------------------------
+	endpoint, err := s.getServiceEndpoint(0)
+	if err != nil {
+		return nil, err
+	}
+
 	httpClientParameter := go_core_http.HttpClientParameter {
-		Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/" , resOrder.Cart.ID ),
+		Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/cart/" , resOrder.Cart.ID ),
 		Method:	"GET",
-		Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+		Timeout: endpoint.HttpTimeout,
 		Headers: &headers,
 	}
 
-	resPayload, err := s.doHttpCall(ctx, 
-									httpClientParameter)
+	resPayload, err := s.doHttpCall(ctx, httpClientParameter)
+	if err != nil {
+		s.logger.Error().
+			Ctx(ctx).
+			Err(err).Send()
+		return nil, err
+	}
+
+	cart, err := s.parseCartFromPayload(ctx, resPayload)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
@@ -570,19 +644,19 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		return nil, err
 	}
 
-	jsonString, err := json.Marshal(resPayload)
-	if err != nil {
-		s.logger.Error().
-				Ctx(ctx).
-				Err(err).Send()
-		return nil, errors.New(err.Error())
-	}
-	var cart model.Cart
-	json.Unmarshal(jsonString, &cart)
-
-	resOrder.Cart = cart
+	resOrder.Cart = *cart
 
 	// ---------------------- STEP 2 (update inventory - PENDING TO SOLD and CartItem) --------------------------
+	endpoint, err = s.getServiceEndpoint(1)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint2, err := s.getServiceEndpoint(0)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range *cart.CartItem {
 		cartItem := &(*cart.CartItem)[i]
 
@@ -591,21 +665,20 @@ func (s *WorkerService) Checkout(ctx context.Context,
 			continue // skip already processed items
 		}
 
-		bodyInventory := model.Inventory { 
+		inventory := model.Inventory { 
 			Pending: cartItem.Quantity * -1,
 			Sold: cartItem.Quantity,
 		}
 
 		httpClientParameter = go_core_http.HttpClientParameter {
-			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[1].Url , "/inventory/product/", cartItem.Product.Sku),
+			Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/inventory/product/", cartItem.Product.Sku),
 			Method:	"PUT",
-			Timeout: (*s.appServer.Endpoint)[1].HttpTimeout,
+			Timeout: endpoint.HttpTimeout,
 			Headers: &headers,
-			Body: bodyInventory,
+			Body: inventory,
 		}
 
-		_, err = s.doHttpCall(ctx, 
-							  httpClientParameter)
+		_, err = s.doHttpCall(ctx, httpClientParameter)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
@@ -618,15 +691,14 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		cartItem.Status = "CART_ITEM:SOLD"
 
 		httpClientParameter = go_core_http.HttpClientParameter {
-			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cartItem/", cartItem.ID),
+			Url:	fmt.Sprintf("%s%s%v", endpoint2.Url , "/cartItem/", cartItem.ID),
 			Method:	"PUT",
-			Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+			Timeout: endpoint2.HttpTimeout,
 			Headers: &headers,
 			Body: cartItem,
 		}
 
-		_, err = s.doHttpCall(ctx, 
-							  httpClientParameter)
+		_, err = s.doHttpCall(ctx, httpClientParameter)
 
 		if err != nil {
 			s.logger.Error().
@@ -640,17 +712,21 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	// ---------------------- STEP 4 (update cart -from BASKET to SOLD ) --------------------------
 	resOrder.Cart.Status = "CART:SOLD"
-	
+	endpoint, err = s.getServiceEndpoint(0)
+
+	if err != nil {
+		return nil, err
+	}
+
 	httpClientParameter = go_core_http.HttpClientParameter {
-			Url:	fmt.Sprintf("%s%s%v", (*s.appServer.Endpoint)[0].Url , "/cart/", resOrder.Cart.ID),
+			Url:	fmt.Sprintf("%s%s%v", endpoint.Url , "/cart/", resOrder.Cart.ID),
 			Method:	"PUT",
-			Timeout: (*s.appServer.Endpoint)[0].HttpTimeout,
+			Timeout: endpoint.HttpTimeout,
 			Headers: &headers,
 			Body: resOrder.Cart,
 	}
 
-	_, err = s.doHttpCall(ctx, 
-						  httpClientParameter)
+	_, err = s.doHttpCall(ctx, httpClientParameter)
 	if err != nil {
 		s.logger.Error().
 				 Ctx(ctx).
@@ -680,7 +756,12 @@ func (s *WorkerService) Checkout(ctx context.Context,
 
 	// ---------------------- STEP 6 (create a clearance) ----------------------
 	listPayment := []model.Payment{}
-	
+
+	endpoint, err = s.getServiceEndpoint(2)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range *order.Payment{
 		payment := &(*order.Payment)[i]
 		payment.Status = "CLEARANCE:SOLD"
@@ -688,31 +769,28 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		payment.Transaction = resOrder.Transaction
 
 		httpClientParameter := go_core_http.HttpClientParameter {
-			Url:	(*s.appServer.Endpoint)[2].Url + "/payment",
+			Url:	endpoint.Url + "/payment",
 			Method:	"POST",
-			Timeout: (*s.appServer.Endpoint)[2].HttpTimeout,
+			Timeout: endpoint.HttpTimeout,
 			Headers: &headers,
 			Body: payment,
 		}
 
-		resPayload, err := s.doHttpCall(ctx, 
-										httpClientParameter)
+		resPayload, err := s.doHttpCall(ctx,httpClientParameter)
 		if err != nil {
 			return nil, err
 		}
 
-		jsonString, err  := json.Marshal(resPayload)
+		respayment, err := s.parsePaymentFromPayload(ctx, resPayload)
 		if err != nil {
 			s.logger.Error().
 					Ctx(ctx).
 					Err(err).Send()
-			return nil, errors.New(err.Error())
+			return nil, err
 		}
-		var resPayment model.Payment
-		json.Unmarshal(jsonString, &resPayment)
-
-		resPayment.Order = nil // clean the order indo in order to avoid (cycle info)
-		listPayment = append(listPayment, resPayment)
+		
+		respayment.Order = nil // clean the order indo in order to avoid (cycle info)
+		listPayment = append(listPayment, *respayment)
 	}
 
 	registerOrchestrationProcess("CLEARANCE:SOLD:SUCCESSFULL", &listStepProcess)
