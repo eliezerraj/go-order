@@ -85,6 +85,7 @@ func setupAppContext(ctx context.Context) (*AppContext, error) {
 
 	// Load all configurations with proper error handling
 	configLoader := config.NewConfigLoader(&initLogger)
+	
 	allConfigs, err := configLoader.LoadAll()
 	if err != nil {
 		return nil, fmt.Errorf("configuration loading FAILED: %w", err)
