@@ -35,24 +35,6 @@ type HttpRouters struct {
 	tracerProvider 	*go_core_otel_trace.TracerProvider
 }
 
-// Helper to extract context with timeout and setup span
-func (h *HttpRouters) withContext(req *http.Request, spanName string) (context.Context, context.CancelFunc, trace.Span) {
-	ctx, cancel := context.WithTimeout(req.Context(), 
-		time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-	
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func", spanName).Send()
-	
-	ctx, span := h.tracerProvider.SpanCtx(ctx, "adapter."+spanName, trace.SpanKindInternal)
-	return ctx, cancel, span
-}
-
-// Helper to get trace ID from context using middleware function
-func (h *HttpRouters) getTraceID(ctx context.Context) string {
-	return go_core_midleware.GetRequestID(ctx)
-}
-
 // Above create routers
 func NewHttpRouters(appServer *model.AppServer,
 					workerService *service.WorkerService,
@@ -71,6 +53,24 @@ func NewHttpRouters(appServer *model.AppServer,
 		logger: &logger,
 		tracerProvider: tracerProvider,
 	}
+}
+
+// Helper to extract context with timeout and setup span
+func (h *HttpRouters) withContext(req *http.Request, spanName string) (context.Context, context.CancelFunc, trace.Span) {
+	ctx, cancel := context.WithTimeout(req.Context(), 
+		time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
+	
+	h.logger.Info().
+			Ctx(ctx).
+			Str("func", spanName).Send()
+	
+	ctx, span := h.tracerProvider.SpanCtx(ctx, "adapter."+spanName, trace.SpanKindInternal)
+	return ctx, cancel, span
+}
+
+// Helper to get trace ID from context using middleware function
+func (h *HttpRouters) getTraceID(ctx context.Context) string {
+	return go_core_midleware.GetRequestID(ctx)
 }
 
 // Helper to write JSON response
@@ -92,7 +92,7 @@ func (h *HttpRouters) parseIDParam(vars map[string]string) (int, error) {
 }
 
 // ErrorHandler creates an APIError with appropriate HTTP status based on error type
-func (h *HttpRouters) ErrorHandler(traceID string, err error) *go_core_midleware.APIError {
+func (h *HttpRouters) ErrorHandler(requestID string, err error) *go_core_midleware.APIError {
 	var httpStatusCode int = http.StatusInternalServerError
 
 	if strings.Contains(err.Error(), "context deadline exceeded") {
@@ -119,7 +119,7 @@ func (h *HttpRouters) ErrorHandler(traceID string, err error) *go_core_midleware
 		httpStatusCode = http.StatusBadRequest
 	}
 
-	return go_core_midleware.NewAPIError(err, traceID, httpStatusCode)
+	return go_core_midleware.NewAPIError(err, requestID, httpStatusCode)
 }
 
 // About return a health
