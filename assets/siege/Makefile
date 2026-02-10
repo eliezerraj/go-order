@@ -8,15 +8,13 @@ env:
 	@echo "---------------------------------------------------------"
 	
 load:
-	@echo "Run Load Inventory ..."
-	
-	@echo "Run load all ..."
-	
+	@echo "Run Load order ..."
+		
 	echo "****** INICIO DO PROCESSO ******"; \
 
 	@for ((i=0; i<=1000; i++)); do \
 		echo "--- 02 ORDER  ---"; \
-		"/mnt/c/Eliezer/workspace/github.com/go-inventory/assets/siege/02_order.sh"; \
+		"/mnt/c/Eliezer/workspace/github.com/go-order/assets/siege/02_order.sh"; \
 	done
 
 	echo "****** FIM DO PROCESSO ******"; \
