@@ -154,6 +154,7 @@ func (h *HttpAppServer) StartHttpAppServer(	ctx context.Context,
 
 // Helper function to setup metrics
 func (h *HttpAppServer) setupMetrics(ctx context.Context) error {
+
 	appInfoMetric := go_core_otel_metric.InfoMetric{
 		Name:    h.appServer.Application.Name,
 		Version: h.appServer.Application.Version,
@@ -206,10 +207,22 @@ func (h *HttpAppServer) withMetrics(next http.HandlerFunc) http.HandlerFunc {
 		if h.tpsMetric != nil && h.latencyMetric != nil && h.statusMetric != nil {
 			start := time.Now()
 
+			// Get the route template
+            route := mux.CurrentRoute(r)
+            pathTemplate := "unknown"
+            if route != nil {
+                var err error
+                pathTemplate, err = route.GetPathTemplate()
+                if err != nil {
+                    h.logger.Warn().Ctx(r.Context()).Err(err).Msg("FAILED to get path template")
+                    pathTemplate = "unknown"
+                }
+            }
+
 			h.tpsMetric.Add(r.Context(), 1,
 				metric.WithAttributes(
 					attribute.String("method", r.Method),
-					attribute.String("path", r.URL.Path),
+					attribute.String("path", pathTemplate),
 				),
 			)
 
@@ -220,7 +233,7 @@ func (h *HttpAppServer) withMetrics(next http.HandlerFunc) http.HandlerFunc {
 			h.latencyMetric.Record(r.Context(), duration,
 				metric.WithAttributes(
 					attribute.String("method", r.Method),
-					attribute.String("path", r.URL.Path),
+					attribute.String("path", pathTemplate),
 				),
 			)
 
@@ -233,7 +246,7 @@ func (h *HttpAppServer) withMetrics(next http.HandlerFunc) http.HandlerFunc {
                 metric.WithAttributes(
                     attribute.Int("status_code", status),
                     attribute.String("method", r.Method),
-                    attribute.String("path", r.URL.Path),
+                    attribute.String("path", pathTemplate),
                 ),
             )
 
