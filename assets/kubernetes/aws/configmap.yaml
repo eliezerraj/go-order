@@ -6,7 +6,7 @@ metadata:
   labels:
     app: *app-name
 data:
-  VERSION: "1.3"
+  VERSION: "1.4"
   ACCOUNT: "aws:908671954593"
   APP_NAME: "go-order.arch-eks-01-02"
   PORT: "7004"
@@ -18,7 +18,7 @@ data:
   DB_MAX_CONNECTION: "10"
   CTX_TIMEOUT: "5"
 
-  LOG_LEVEL: "info" #info, error, warning
+  LOG_LEVEL: "warning" #info, error, warning
   OTEL_EXPORTER_OTLP_ENDPOINT: "arch-eks-01-02-otel-collector.default.svc.cluster.local:4317"
 
   OTEL_METRICS: "true"
