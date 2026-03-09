@@ -37,6 +37,7 @@ const (
 	routeMetrics     = "/metrics"
 	routeOrder       = "/order"
 	routeCheckout    = "/checkout"
+	routeListOrder   = "/list/order"
 )
 
 // ExcludedFromTracing routes that should not create spans
@@ -258,10 +259,12 @@ func (h *HttpAppServer) withMetrics(next http.HandlerFunc) http.HandlerFunc {
 
 // Helper function to setup routes and middleware
 func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters) *mux.Router {
-	appRouter := mux.NewRouter().StrictSlash(true)
+
+	// Create middleware WITH CORS pre-configured (see go-core/v2/middleware/middleware.go for details)
 	appMiddleWare := go_core_midleware.NewMiddleWare(h.logger)
 	
 	// Apply common middleware
+	appRouter := mux.NewRouter().StrictSlash(true)
 	appRouter.Use(appMiddleWare.MiddleWareHandlerHeader)
 
 	// Register metrics handler before OTEL middleware
@@ -299,6 +302,10 @@ func (h *HttpAppServer) setupRoutes(appHttpRouters app_http_routers.HttpRouters)
 
 	get_payment_order := appRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
 	get_payment_order.HandleFunc(routeCheckout, h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.Checkout)))
+
+	list := appRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	list.Use(appMiddleWare.GzipMiddleware)
+	list.HandleFunc(routeListOrder+"/{id}", h.withMetrics(appMiddleWare.MiddleWareErrorHandler(appHttpRouters.ListOrder)))
 
 	return appRouter
 }
