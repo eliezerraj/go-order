@@ -96,7 +96,7 @@ func (w *WorkerRepository) ListOrder(ctx context.Context,
 			w.logger.Error().
 				Ctx(ctx).
 				Err(err).Send()
-			return nil, err
+			return nil, fmt.Errorf("FAILED to scan row: %w", err)
         }
 
 		resOrder.UpdatedAt = w.pointerTime(nullOrderUpdatedAt)

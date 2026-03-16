@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"context"
 	"github.com/go-order/internal/domain/model"
+	
 	"go.opentelemetry.io/otel/trace"
-
 	"go.opentelemetry.io/otel/codes"
 
 	go_core_http "github.com/eliezerraj/go-core/v2/http"
