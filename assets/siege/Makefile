@@ -12,9 +12,10 @@ load:
 		
 	echo "****** INICIO DO PROCESSO ******"; \
 
-	@for ((i=0; i<=1000; i++)); do \
+	@for ((i=0; i<=30; i++)); do \
 		echo "--- 02 ORDER  ---"; \
 		"/mnt/c/Eliezer/workspace/github.com/go-order/assets/siege/02_order.sh"; \
+		sleep 0s; \
 	done
 
 	echo "****** FIM DO PROCESSO ******"; \
