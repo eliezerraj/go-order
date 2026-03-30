@@ -241,38 +241,3 @@ func (h *HttpRouters) Checkout(rw http.ResponseWriter, req *http.Request) error 
 	
 	return h.writeJSON(rw, http.StatusOK, res)
 }
-
-// About get order
-/*func (h *HttpRouters) GetOrderV1(rw http.ResponseWriter, req *http.Request) error {
-	// extract context		
-	ctx, cancel := context.WithTimeout(req.Context(), time.Duration(h.appServer.Server.CtxTimeout) * time.Second)
-    defer cancel()
-
-	// log with context
-	h.logger.Info().
-			Ctx(ctx).
-			Str("func","GetOrderV1").Send()
-
-	// trace	
-	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.GetOrderV1", trace.SpanKindInternal)
-	defer span.End()
-
-	vars := mux.Vars(req)
-	varID := vars["id"]
-
-	varIDint, err := strconv.Atoi(varID)
-    if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
-    }
-
-	order := model.Order{ID: varIDint}
-
-	res, err := h.workerService.GetOrderV1(ctx, &order)
-	if err != nil {
-		trace_id := fmt.Sprintf("%v",ctx.Value("request-id"))
-		return h.ErrorHandler(trace_id, err)
-	}
-	
-	return coreMiddleWareWriteJSON.WriteJSON(rw, http.StatusOK, res)
-}*/
