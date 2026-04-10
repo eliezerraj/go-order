@@ -55,7 +55,7 @@ print("" if value is None else value)' "$field"
 slope_rand() {
 	local index=$1
 	local base=2
-	local step=1
+	local step=3
 
 	SEQ=$(( base + (index * step) + (RANDOM % 8) ))
 	echo "$SEQ"
@@ -93,12 +93,12 @@ LOOP=30
 for i in $(seq 1 $LOOP); do
 
 	#PRODUCT_1="cheese-fr-${i}"
-	PRODUCT_1="cheese-fr-6"
+	PRODUCT_1="coffee-br-02"
 
-	FINAL_QTD=60
+	FINAL_QTD=10
 	RANDOM_QTD_NORMAL=$(normal_rand $RANDOM_MEAN $RANDOM_STD $RANDOM_MIN $RANDOM_MAX)
 	RANDOM_QTD_SLOPE=$(slope_rand $i)
-	QTD_FINAL_1=$((FINAL_QTD + RANDOM_QTD_SLOPE))
+	QTD_FINAL_1=$((FINAL_QTD + RANDOM_QTD_NORMAL))
 
 	FINAL_PRICE=80	
 	RANDOM_PRICE_NORMAL=$(normal_rand $RANDOM_MEAN $RANDOM_STD $RANDOM_MIN $RANDOM_MAX)	
