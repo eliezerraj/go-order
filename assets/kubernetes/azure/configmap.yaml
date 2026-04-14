@@ -7,19 +7,19 @@ metadata:
     app: *app-name
 data:
   VERSION: "1.6"
-  ACCOUNT: "aws:908671954593"
-  APP_NAME: "go-order.arch-eks-01-02"
+  ACCOUNT: "az:e5240c8f-ec4f-4bd4-a36e-1981d27dd8e1"
+  APP_NAME: "go-order.az1d-aks-architecture"
   PORT: "7004"
   ENV: "dev"
 
-  DB_HOST: "rds-proxy-db-arch.proxy-couoacqalfwt.us-east-2.rds.amazonaws.com"
+  DB_HOST: "db-az1-arch-01.postgres.database.azure.com"
   DB_PORT: "5432"
   DB_NAME: "postgres"
   DB_MAX_CONNECTION: "10"
   CTX_TIMEOUT: "5"
 
   LOG_LEVEL: "warning" #info, error, warning
-  OTEL_EXPORTER_OTLP_ENDPOINT: "arch-eks-01-02-otel-collector.default.svc.cluster.local:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "az1d-aks-architecture-otel-collector.default.svc.cluster.local:4317"
 
   OTEL_METRICS: "true"
   OTEL_STDOUT_TRACER: "false"
@@ -28,7 +28,7 @@ data:
 # the features below works only for a local machine, for kubernetes all logs are shipping via a collector
   OTEL_LOGS: "false"
   OTEL_STDOUT_LOG_GROUP: "false"
-  LOG_GROUP: "/dock/eks/arch-eks-01-02/test-a/go-order"
+  LOG_GROUP: "/dock/aks/az1d-aks-architecture/test-a/go-order"
 
   NAME_SERVICE_00: "go-cart"
   URL_SERVICE_00: "https://go-cart.architecturedev.caradhras.io"
