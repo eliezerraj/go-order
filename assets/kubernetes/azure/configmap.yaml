@@ -18,12 +18,12 @@ data:
   DB_MAX_CONNECTION: "10"
   CTX_TIMEOUT: "5"
 
-  LOG_LEVEL: "warning" #info, error, warning
+  LOG_LEVEL: "info" #info, error, warning
   OTEL_EXPORTER_OTLP_ENDPOINT: "az1d-aks-architecture-otel-collector.default.svc.cluster.local:4317"
 
-  OTEL_METRICS: "true"
-  OTEL_STDOUT_TRACER: "false"
+  OTEL_METRICS: "false"
   OTEL_TRACES: "true"
+  OTEL_STDOUT_TRACER: "false"
 
 # the features below works only for a local machine, for kubernetes all logs are shipping via a collector
   OTEL_LOGS: "false"
@@ -31,16 +31,16 @@ data:
   LOG_GROUP: "/dock/aks/az1d-aks-architecture/test-a/go-order"
 
   NAME_SERVICE_00: "go-cart"
-  URL_SERVICE_00: "https://go-cart.architecturedev.caradhras.io"
+  URL_SERVICE_00: "https://go-cart-aws-wk-az.architecturedev.caradhras.io"
   HOST_SERVICE_00: "go-cart"
   CLIENT_HTTP_TIMEOUT_00: "5"
 
   NAME_SERVICE_01: "go-inventory"
-  URL_SERVICE_01: "https://go-inventory.architecture.caradhras.io"
+  URL_SERVICE_01: "https://go-inventory-az1d.architecture.caradhras.io"
   HOST_SERVICE_01: "go-inventory"
   CLIENT_HTTP_TIMEOUT_01: "5"
 
   NAME_SERVICE_02: "go-clearance"
-  URL_SERVICE_02: "https://go-clearance.architecturedev.caradhras.io"
+  URL_SERVICE_02: "https://go-clearance-aws-wk-az.architecturedev.caradhras.io"
   HOST_SERVICE_02: "go-clearance"
   CLIENT_HTTP_TIMEOUT_02: "5"
