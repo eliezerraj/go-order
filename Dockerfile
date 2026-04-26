@@ -1,7 +1,7 @@
 # docker build -t go-order .
 # docker run -dit --name go-order -p 7004:7004 go-order
 
-FROM golang:1.24 As builder
+FROM golang:1.24 AS builder
 
 RUN apt-get update && apt-get install bash && apt-get install -y --no-install-recommends ca-certificates
 
