@@ -1,13 +1,14 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
-	"encoding/json"	
+	"time"
 
 	"github.com/gorilla/mux"
 
-	"github.com/go-order/shared/erro"
 	"github.com/go-order/internal/domain/model"
+	"github.com/go-order/shared/erro"
 
 	"go.opentelemetry.io/otel/codes"
 )
@@ -19,9 +20,21 @@ func (h *HttpRouters) AddOrder(rw http.ResponseWriter, req *http.Request) error 
 	defer span.End()
 	
 	// decode payload
-	order := model.Order{}
-	err := json.NewDecoder(req.Body).Decode(&order)
+	var payload struct {
+		model.Order
+		OrderDate string `json:"order_date,omitempty"`
+	}
+	err := json.NewDecoder(req.Body).Decode(&payload)
 	defer req.Body.Close()
+
+	order := payload.Order
+	if payload.OrderDate != "" {
+		if parsedDate, errParse := time.Parse("2006-01-02", payload.OrderDate); errParse == nil {
+			order.Date = parsedDate
+		}
+	} else {
+		order.Date = time.Now()
+	}
 
     if err != nil {
 		span.RecordError(err) 

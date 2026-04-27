@@ -121,6 +121,7 @@ func (s *WorkerService) Checkout(ctx context.Context,
 		inventory := model.Inventory { 
 			Pending: cartItem.Quantity * -1,
 			Sold: cartItem.Quantity,
+			//Available: cartItem.Quantity * 1,
 		}
 
 		httpClientParameter = go_core_http.HttpClientParameter {

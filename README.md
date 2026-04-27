@@ -43,8 +43,8 @@
     order->order:create \norder_outbox
     user<--order:http 200 (JSON)\npostData
 
-![alt text](checkout_order.png)
-    
+![alt text](image.png)    
+
     title checkout order
 
     participant user
@@ -221,6 +221,7 @@ Security Headers: Is implement via go-core midleware
     CREATE TABLE public.order (
         id 				BIGSERIAL		NOT NULL,
         transaction_id	VARCHAR(100) 	NULL,
+        order_date		date         	NOT null DEFAULT now(),
         fk_cart_id 		BIGSERIAL 		NOT NULL,
         user_id 		VARCHAR(100) 	NOT NULL,    
         status 			VARCHAR(100) 	NOT NULL,

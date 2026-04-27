@@ -18,7 +18,7 @@ import (
 
 // About create a order
 func (s *WorkerService) AddOrder(ctx context.Context, 
-								order *model.Order) (*model.Order, error){
+								 order *model.Order) (*model.Order, error){
 	s.logger.Info().
 		Ctx(ctx).
 		Str("func","AddOrder").Send()
@@ -107,7 +107,6 @@ func (s *WorkerService) AddOrder(ctx context.Context,
 
 		inventory := model.Inventory { 
 			Pending: cartItem.Quantity,
-			Available: cartItem.Quantity * -1,
 		}
 
 		httpClientParameter = go_core_http.HttpClientParameter {

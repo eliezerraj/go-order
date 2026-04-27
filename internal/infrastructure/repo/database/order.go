@@ -32,6 +32,7 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 
 	// Query Execute
 	query := `INSERT INTO public.order (transaction_id,
+										order_date,
 										fk_cart_id,
 										user_id,
 										status,
@@ -39,11 +40,12 @@ func (w* WorkerRepository) AddOrder(ctx context.Context,
 										amount,
 										address,
 										created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
 
 	row := tx.QueryRow(	ctx, 
 						query,			
 						order.Transaction,
+						order.Date,
 						order.Cart.ID,
 						order.User,
 						order.Status,
@@ -93,6 +95,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 	// Query and Execute
 	query := `select	o.id,
 						o.transaction_id,
+						o.order_date,
 						o.status,
 						o.currency,
 						o.amount,
@@ -135,6 +138,7 @@ func (w *WorkerRepository) GetOrder(ctx context.Context,
 		err := rows.Scan(	
 							&resOrder.ID, 
 							&resOrder.Transaction, 
+							&resOrder.Date,
 							&resOrder.Status, 							
 							&resOrder.Currency, 
 							&resOrder.Amount,
