@@ -19,9 +19,9 @@ data:
   CTX_TIMEOUT: "5"
 
   LOG_LEVEL: "info" #info, error, warning
-  OTEL_EXPORTER_OTLP_ENDPOINT: "az1d-aks-architecture-otel-collector.default.svc.cluster.local:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "arch-aks-az1d-otel-collector.default.svc.cluster.local:4317"
 
-  OTEL_METRICS: "false"
+  OTEL_METRICS: "true"
   OTEL_TRACES: "true"
   OTEL_STDOUT_TRACER: "false"
 
